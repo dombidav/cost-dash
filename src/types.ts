@@ -1,6 +1,13 @@
-export interface Settings { heat: number; correction: number }
-export interface Reading { id: string; date: string; value: number }
-export type BillingMode = 'flat' | 'reading' | 'temperature';
+export interface Settings {
+  heat: number;
+  correction: number;
+}
+export interface Reading {
+  id: string;
+  date: string;
+  value: number;
+}
+export type BillingMode = "flat" | "reading" | "temperature";
 export interface Billing {
   mode: BillingMode;
   annualEstimate: string;

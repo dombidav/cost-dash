@@ -1,10 +1,12 @@
-# Rezsi — gáz- és áramkalkulátor
+# RezsiPont
+
+Rezsiszámlák egyszerűen. Pont.
 
 Magyar nyelvű, mobilra tervezett, sötét megjelenésű kalkulátor. Svelte 5, TypeScript, Vite és Chart.js. Teljesen kliensoldali alkalmazás, jQuery nélkül.
 
 ## Indítás és build
 
-Node.js 22.12+ szükséges. A függőségek pontos verzióit a `package-lock.json` rögzíti.
+Node.js 22.13–22.x vagy 24+ szükséges. A függőségek pontos verzióit a `package-lock.json` rögzíti.
 
 ```sh
 npm ci
@@ -22,7 +24,7 @@ A `dist/` teljes tartalma statikus HTTP-tárhelyre tölthető fel. Az `index.htm
 
 A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-számításokat, a `vite.config.ts` a buildet állítja be. Szigorú TypeScript-típusellenőrzés, Terser-tömörítés három optimalizálási menettel, névrövidítéssel és megjegyzéseltávolítással; tömörített CSS, production sourcemap nélkül. A Chart.js csak a használt elemekkel, külön chunkban töltődik be, amikor grafikon közelébe görgetsz. A `.gitignore` kizárja a függőségeket, buildet, helyi környezeti és ideiglenes fájlokat.
 
-Teszt- és lintereszköz nincs beállítva. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja.
+Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja.
 
 ## Használat
 
@@ -73,7 +75,6 @@ A következő augusztus 1-jei mérés az előző kedvezményes év záróállás
 
 Referenciaadatok: `src/reference-data.ts`. Az MVM 2026. októberi [díjtájékoztatójából](https://www.mvmnext.hu/foldgaz/contents/Documents/Ugyintezes/Arak/202610/MVM-Fo%CC%88ldga%CC%81z-Lak-Nemlak-2026-10.pdf?download) nettó 2,256 × 1,27 = bruttó 2,86512 Ft/MJ; magasabb díj 22,002 Ft/MJ; éves alapdíj 11 674 Ft (20 m³/h alatti önálló lakossági mérő). A forrás szerint ezek 2023-10-01-től érvényesek. A KSH élő táblázata 2026-10-30-án frissült; a 2025-ös oszlopot használjuk. Ellenőrizve: 2026-11-06. Az alkalmazás nem végez háttérlekérést és nem továbbít személyes adatokat.
 
-
 ## Svelte felépítés
 
 - `src/App.svelte`: közös keret, navigáció, külön, igény szerint betöltött gáz- és áramoldal.
@@ -83,7 +84,7 @@ Referenciaadatok: `src/reference-data.ts`. Az MVM 2026. októberi [díjtájékoz
 - `src/lib/`: formázás, validált helyi tárolás és Svelte-állapot a mentési visszajelzéshez.
 - `src/style.css`: közös mobilközpontú stílusok és témaváltozók; gázon zöld, áramon kék kiemelés, azonos sötét háttérrel.
 
-A korábbi DOM-ot kézzel építő alkalmazásmodulokat eltávolítottuk. A Svelte-migráció előtti mentőcommit: `a72a21c` (`chore: snapshot before Svelte migration`). A fordítás `svelte-check` ellenőrzést is futtat; tesztkeretrendszer és linter nincs telepítve.
+A korábbi DOM-ot kézzel építő alkalmazásmodulokat eltávolítottuk. A Svelte-migráció előtti mentőcommit: `a72a21c` (`chore: snapshot before Svelte migration`). A fordítás `svelte-check` ellenőrzést is futtat.
 
 ## Áram és több mérő
 
@@ -112,7 +113,6 @@ Az áramoldal önálló tarifaismertetője az A1, A2, B alap, B Komfort, H, B GE
 Az árammérő beállításai alapból négy mezőt mutatnak: név, elosztó, tarifa és éves becslés. Az automatikusan kitöltött díjak összefoglalója alatt a „Díjak módosítása” rész nyitja meg az árakat és az alapdíjat. A jogosultsági időszak, a napelem és az igazolt többletkeret külön lenyitható esetek; összecsukásuk nem törli vagy kapcsolja ki a mentett adatot, az aktív beállítást az összefoglaló jelzi. A2/H választásakor a hozzájuk tartozó fogyasztási arány is megjelenik. A mérő eltávolítása külön alsó művelet. Ezt a `src/electricity/PointSettings.svelte` komponens kezeli.
 
 Ellenőrzött áramforrások (2026-11-06): [MVM díjtábla](https://www.mvmnext.hu/aram/servlet/download?id=16214&type=file), [kedvezmények és jogosultságok](https://www.mvmnext.hu/lakossagirezsi/gyakorikerdesek-aram), [D árszabás](https://www.mvmnext.hu/aram/pages/aloldal.jsp?id=16455107), [KSH háztartási fogyasztás](https://www.ksh.gov.hu/stadat_files/kor/hu/kor0068.html). Az országos áramreferencia a 2025-ös 205,7 kWh/hó × 12 = 2468,4 kWh/év; egy külön B/H-mérő nem azonos egy teljes háztartással.
-
 
 A „Mérő beállításai” harmonika minden oldalbetöltéskor és mérőváltáskor összecsukva indul. Nyitását és csukását 280 ms-os magasságátmenet kíséri; csökkentett mozgás beállításnál az animáció kikapcsol. A zárt tartalom nem kerül a billentyűzetes fókuszsorrendbe.
 
