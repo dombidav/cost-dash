@@ -30,7 +30,31 @@
     onremove: (id: string) => void;
     onopening: () => void;
   } = $props();
+
+  const previewSize = 3;
+  const pageSize = 12;
+  let expanded = $state(false);
+  let page = $state(1);
   let ordered = $derived(sortByDate(rows));
+  let pageCount = $derived(Math.max(1, Math.ceil(ordered.length / pageSize)));
+  let currentPage = $derived(Math.min(page, pageCount));
+  let pageEnd = $derived(
+    ordered.length - (expanded ? (currentPage - 1) * pageSize : 0),
+  );
+  let visibleRows = $derived(
+    ordered
+      .slice(
+        Math.max(0, pageEnd - (expanded ? pageSize : previewSize)),
+        pageEnd,
+      )
+      .reverse(),
+  );
+
+  function toggleExpanded() {
+    page = 1;
+    expanded = !expanded;
+  }
+
   let chartData = $derived(
     ordered
       .filter((row) => row.total !== null)
@@ -77,7 +101,7 @@
     <p class="field-hint">
       A pontok mérések, a köztük húzott vonal szemléltetés.
     </p>
-    <div class="history-table-wrap">
+    <div class="history-table-wrap" id={`${id}-table`}>
       <table>
         <caption class="sr-only">Szerkeszthető mérési napló</caption><thead
           ><tr
@@ -88,8 +112,9 @@
             ></tr
           ></thead
         ><tbody>
-          {#each [...ordered].reverse() as row, reverseIndex (row.id)}{@const index =
-              ordered.length - 1 - reverseIndex}<tr
+          {#each visibleRows as row, rowIndex (row.id)}
+            {@const previous = ordered[pageEnd - rowIndex - 2]}
+            <tr
               ><td data-label="Dátum"
                 ><Field
                   id={`${id}-${row.id}-date`}
@@ -114,13 +139,11 @@
                     oncommit={(value) => onedit(row.id, columnIndex, value)}
                   /></td
                 >{/each}<td class="consumption-cell" data-label="Fogyasztás"
-                >{index &&
-                row.total !== null &&
-                ordered[index - 1].total !== null
-                  ? `+${fmt(row.total - ordered[index - 1].total!)}`
+                >{previous && row.total !== null && previous.total !== null
+                  ? `+${fmt(row.total - previous.total)}`
                   : "—"}<small
-                  >{index
-                    ? `${days(ordered[index - 1].date, row.date)} nap alatt`
+                  >{previous
+                    ? `${days(previous.date, row.date)} nap alatt`
                     : "Kezdőállás"}</small
                 ></td
               ><td class="row-actions"
@@ -135,5 +158,84 @@
         </tbody>
       </table>
     </div>
+    {#if expanded}
+      <nav class="history-pagination" aria-label="A mérési napló oldalai">
+        <span role="status">{currentPage}. oldal, összesen {pageCount}</span>
+        <div class="page-buttons">
+          <button
+            type="button"
+            aria-label="Első oldal"
+            disabled={currentPage === 1}
+            onclick={() => (page = 1)}>Első</button
+          >
+          <button
+            type="button"
+            aria-label="Előző oldal"
+            disabled={currentPage === 1}
+            onclick={() => (page = currentPage - 1)}>Előző</button
+          >
+          <button
+            type="button"
+            aria-label="Következő oldal"
+            disabled={currentPage === pageCount}
+            onclick={() => (page = currentPage + 1)}>Következő</button
+          >
+          <button
+            type="button"
+            aria-label="Utolsó oldal"
+            disabled={currentPage === pageCount}
+            onclick={() => (page = pageCount)}>Utolsó</button
+          >
+        </div>
+      </nav>
+    {/if}
+    {#if expanded || rows.length > previewSize}
+      <button
+        class="text-button history-toggle"
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={`${id}-table`}
+        onclick={toggleExpanded}
+        >{expanded ? "Mutass kevesebbet" : "Mutass többet"}</button
+      >
+    {/if}
   {/if}
 </section>
+
+<style>
+  .history-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .page-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .page-buttons button {
+    min-height: 38px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .page-buttons button:enabled:hover {
+    border-color: var(--accent);
+  }
+  .page-buttons button:disabled {
+    cursor: default;
+  }
+  .history-toggle {
+    min-height: 40px;
+    margin-top: 8px;
+  }
+</style>

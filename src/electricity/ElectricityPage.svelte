@@ -903,22 +903,24 @@
   {combinedAnnualVolume}
   onstats={stats}
 />
-<ReadingLog
-  id="electricity-history"
-  unit="kWh"
-  rows={yearly.items.map((r) => ({
-    id: r.id,
-    date: r.date,
-    values: point.tariff === "A2" ? [r.peak, r.off] : [r.peak],
-    total: total(point, r),
-  }))}
-  columns={point.tariff === "A2"
-    ? ["Csúcsregiszter", "Völgyregiszter"]
-    : ["Mérőállás"]}
-  onedit={editReading}
-  onremove={removeReading}
-  onopening={opening}
-/>
+{#key `${point.id}-${model.year}`}
+  <ReadingLog
+    id="electricity-history"
+    unit="kWh"
+    rows={yearly.items.map((r) => ({
+      id: r.id,
+      date: r.date,
+      values: point.tariff === "A2" ? [r.peak, r.off] : [r.peak],
+      total: total(point, r),
+    }))}
+    columns={point.tariff === "A2"
+      ? ["Csúcsregiszter", "Völgyregiszter"]
+      : ["Mérőállás"]}
+    onedit={editReading}
+    onremove={removeReading}
+    onopening={opening}
+  />
+{/key}
 <TariffGuide active={point.tariff} />
 <section class="comparison-section" id="electricity-comparison">
   <div class="eyebrow">

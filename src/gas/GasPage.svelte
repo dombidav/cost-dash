@@ -521,20 +521,22 @@
   </p>
 </section>
 <GasStats {model} {annual} {bill} onstats={updateStats} />
-<ReadingLog
-  id="gas-history"
-  unit="m³"
-  rows={annual.items.map((r) => ({
-    id: r.id,
-    date: r.date,
-    values: [r.value],
-    total: r.value,
-  }))}
-  columns={["Mérőállás"]}
-  onedit={edit}
-  onremove={remove}
-  onopening={opening}
-/>
+{#key model.year}
+  <ReadingLog
+    id="gas-history"
+    unit="m³"
+    rows={annual.items.map((r) => ({
+      id: r.id,
+      date: r.date,
+      values: [r.value],
+      total: r.value,
+    }))}
+    columns={["Mérőállás"]}
+    onedit={edit}
+    onremove={remove}
+    onopening={opening}
+  />
+{/key}
 <section class="comparison-section" id="gas-comparison">
   <div class="eyebrow">
     <span class="tiny-line"></span>ÉRTHETŐEN A SZÁMLÁZÁSRÓL
