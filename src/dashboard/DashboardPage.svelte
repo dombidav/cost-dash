@@ -7,6 +7,7 @@
   import { categories } from "../lib/pages";
   import DataCoverage from "./DataCoverage.svelte";
   import MonthComparison from "./MonthComparison.svelte";
+  import MonthlyPlan from "./MonthlyPlan.svelte";
   import UpcomingPayments from "./UpcomingPayments.svelte";
   import {
     categoryColorProperty,
@@ -269,6 +270,7 @@
   {/if}
 
   <UpcomingPayments {sources} {now} />
+  <MonthlyPlan {sources} {now} />
 
   <section class="card" aria-labelledby="dashboard-trend">
     <h2 id="dashboard-trend">Havi alakulás · {year}</h2>

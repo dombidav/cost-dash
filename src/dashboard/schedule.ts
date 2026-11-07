@@ -21,6 +21,7 @@ export function carPayments(sources: Sources, start: string, end: string) {
             car: car.name,
             due,
             amount: charge.amount,
+            frequency: charge.months,
           });
         }
         return payments;
