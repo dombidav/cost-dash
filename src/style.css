@@ -6,12 +6,20 @@
   --control-border: #78897e;
   --text: #f0f3ee;
   --muted: #a1aea5;
-  --accent: #b9f592;
+  --category-gas: #ff9189;
+  --category-electricity: #b9f592;
+  --accent: var(--category-gas);
+  --accent-rgb: 255 145 137;
+  --on-accent: #182018;
   --green: #85bd70;
   --danger: #ffb5a8;
   --radius: 20px;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
   font-synthesis: none;
+}
+body[data-energy="electricity"] {
+  --accent: var(--category-electricity);
+  --accent-rgb: 185 245 146;
 }
 * {
   box-sizing: border-box;
@@ -104,7 +112,7 @@ input[aria-invalid="true"] {
 .brand-mark svg {
   width: 24px;
   height: 24px;
-  fill: #17231a;
+  fill: var(--on-accent);
   transform: rotate(5deg);
 }
 .brand-accent {
@@ -429,7 +437,7 @@ input::placeholder {
   gap: 15px;
   margin-top: 18px;
   background: var(--accent);
-  color: #182018;
+  color: var(--on-accent);
   border: 0;
   border-radius: 9px;
   padding: 13px 16px;
@@ -784,16 +792,16 @@ footer {
   width: max-content;
   max-width: calc(100% - 32px);
   padding: 13px 18px;
-  background: #d1f6bc;
-  color: #1c2a1c;
-  border: 1px solid #d1f6bc;
+  background: color-mix(in srgb, var(--accent), white 25%);
+  color: var(--on-accent);
+  border: 1px solid var(--accent);
   border-radius: 10px;
   box-shadow: 0 6px 30px #0005;
   z-index: 5;
   font-size: 12px;
 }
 .toast button {
-  color: #20331b;
+  color: inherit;
   background: none;
   border: 0;
   text-decoration: underline;
@@ -810,7 +818,7 @@ footer {
   top: -100px;
   left: 10px;
   background: var(--accent);
-  color: #111;
+  color: var(--on-accent);
   padding: 10px;
   z-index: 10;
 }
@@ -1768,14 +1776,7 @@ footer {
   }
 }
 
-/* Svelte shared controls and electricity theme */
-:root {
-  --accent-rgb: 185 245 146;
-}
-body[data-energy="electricity"] {
-  --accent: #89bfff;
-  --accent-rgb: 137 191 255;
-}
+/* Svelte shared controls */
 .field {
   min-width: 0;
   position: relative;
@@ -1841,6 +1842,8 @@ body[data-energy="electricity"] {
 .energy-nav a[aria-current="page"] {
   background: rgb(var(--accent-rgb) / 0.12);
   color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
   box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.18);
 }
 .energy-nav a:hover {
@@ -2009,11 +2012,6 @@ body[data-energy="electricity"] {
 }
 .point-summary .stat-footnote {
   font-size: 9px;
-}
-body[data-energy="electricity"] .toast {
-  background: #c0ddff;
-  border-color: #c0ddff;
-  color: #17243a;
 }
 .profile-settings .field input {
   width: 100%;

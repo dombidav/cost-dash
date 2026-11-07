@@ -50,7 +50,7 @@ export function drawConsumption(
   if (!readings.length) return;
   const first = readings[0];
   const accent =
-    getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#b9f592";
+    getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#ff9189";
   const chart = new Chart(canvas, {
     type: "line",
     data: {
@@ -121,7 +121,7 @@ export function drawBenchmark(
 ) {
   clear(canvas.id);
   const accent =
-    getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#b9f592";
+    getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#ff9189";
   const chart = new Chart(canvas, {
     type: "bar",
     data: {
