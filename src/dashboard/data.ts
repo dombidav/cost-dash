@@ -82,7 +82,7 @@ export type MonthReport = {
   total: number | null;
 };
 
-function meterAt<T extends { date: string }>(
+export function meterAt<T extends { date: string }>(
   ordered: readonly T[],
   date: string,
   interpolate: (before: T, after: T, share: number) => T,

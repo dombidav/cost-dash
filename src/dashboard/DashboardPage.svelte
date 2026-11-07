@@ -10,6 +10,7 @@
   import MonthlyBudget from "./MonthlyBudget.svelte";
   import MonthlyPlan from "./MonthlyPlan.svelte";
   import UpcomingPayments from "./UpcomingPayments.svelte";
+  import UtilityTrend from "./UtilityTrend.svelte";
   import {
     categoryColorProperty,
     categoryIds,
@@ -386,6 +387,7 @@
         kategórialinkekkel eljutsz a rögzítéshez.
       </p>{/if}
   </section>
+  <UtilityTrend {sources} {months} {year} />
 </div>
 
 <style>
