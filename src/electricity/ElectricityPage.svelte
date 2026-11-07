@@ -24,6 +24,7 @@
   import { today, validDate, parseNumber, yearFor, days } from "../calendar";
   import { fmt, money, uid } from "../lib/format";
   import { storage } from "../lib/storage.svelte";
+  import { trimReadings } from "../lib/reading-limit";
   import { toast } from "../lib/ui.svelte";
   import type {
     ElectricityPoint,
@@ -37,8 +38,13 @@
   import Chart from "../components/Chart.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
   import ElectricStats from "./ElectricStats.svelte";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { electricityReport } from "./report";
   const key = "rezsi-electricity.v1";
   const disk = storage(key, initialState, validState, migrateState);
+  const initialRemoved = limitReadings(disk.data);
+  if (initialRemoved) disk.save(disk.data);
+  let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
   let point = $derived(model.points.find((p) => p.id === model.selected)!);
   let bill = $derived(periodResult(point));
@@ -120,7 +126,11 @@
     { value: "readings", label: "Napló pontos határnapi méréseiből" },
     { value: "period", label: "Időszaki tény-kWh megadása" },
   ];
+  function limitReadings(data: ElectricityState) {
+    return trimReadings(data.points.map((p) => p.readings));
+  }
   function save() {
+    removedReadings += limitReadings(model);
     return disk.save($state.snapshot(model));
   }
   function selectPoint(id: string) {
@@ -267,10 +277,13 @@
     model.year = yearFor(row.date);
     point.draft = { date: today(), peak: "", off: "" };
     draft = { ...point.draft };
+    const saved = save();
     toast(
-      save()
-        ? "Villanyóraállás rögzítve és elmentve."
-        : "Mérés rögzítve, de a helyi mentés sikertelen.",
+      !point.readings.some((item) => item.id === row.id)
+        ? "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba."
+        : saved
+          ? "Villanyóraállás rögzítve és elmentve."
+          : "Mérés rögzítve, de a helyi mentés sikertelen.",
     );
   }
   function editReading(id: string, field: number | "date", raw: string) {
@@ -309,7 +322,11 @@
       model.selected = p.id;
       model.year = yearFor(row.date);
       save();
-      toast("Mérés visszaállítva.");
+      toast(
+        p.readings.some((item) => item.id === row.id)
+          ? "Mérés visszaállítva."
+          : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+      );
     });
   }
   function opening() {
@@ -444,6 +461,24 @@
     }}
   />
 </section>
+<PdfActions
+  category="electricity"
+  getData={() => $state.snapshot(model)}
+  report={electricityReport}
+  limit={limitReadings}
+  {removedReadings}
+  parse={(value) => {
+    const parsed = migrateState(value);
+    return validState(parsed) ? parsed : null;
+  }}
+  describe={(data) =>
+    `${data.points.length} mérési pont, ${data.points.reduce((sum, point) => sum + point.readings.length, 0)} árammérés`}
+  onrestore={(data: ElectricityState) => {
+    if (!disk.save(data)) return false;
+    model = data;
+    return true;
+  }}
+/>
 <section class="card point-picker" id="electricity-point">
   <Select
     id="electricity-point-select"

@@ -9,10 +9,18 @@
   } from "../calculator";
   import { addDays, parseNumber, today, validDate, yearFor } from "../calendar";
   import { storage } from "../lib/storage.svelte";
+  import { trimReadings } from "../lib/reading-limit";
   import { initialGas, validGas, migrateGas } from "./state";
   import { fmt, uid } from "../lib/format";
   import { toast } from "../lib/ui.svelte";
-  import type { Billing, Settings, StatisticsSettings } from "../types";
+  import type {
+    AppState,
+    Billing,
+    Settings,
+    StatisticsSettings,
+  } from "../types";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { gasReport } from "./report";
   import Field from "../components/Field.svelte";
   import Select from "../components/Select.svelte";
   import Gauge from "../components/Gauge.svelte";
@@ -20,6 +28,9 @@
   import GasStats from "./GasStats.svelte";
   const key = "rezsi-calculator.v1",
     disk = storage(key, initialGas, validGas, migrateGas);
+  const initialRemoved = limitReadings(disk.data);
+  if (initialRemoved) disk.save(disk.data);
+  let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
   let draft = $state({ ...disk.data.draft }),
     formError = $state("");
@@ -92,7 +103,11 @@
     "November",
     "December",
   ];
+  function limitReadings(data: AppState) {
+    return trimReadings([data.readings]);
+  }
   function save() {
+    removedReadings += limitReadings(model);
     return disk.save($state.snapshot(model));
   }
   function saveDraft() {
@@ -139,10 +154,13 @@
     model.year = yearFor(reading.date);
     draft = { value: "", date: today() };
     model.draft = { ...draft };
+    const saved = save();
     toast(
-      save()
-        ? "Mérőállás rögzítve és elmentve."
-        : "Mérőállás rögzítve, de a helyi mentés sikertelen.",
+      !model.readings.some((row) => row.id === reading.id)
+        ? "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba."
+        : saved
+          ? "Mérőállás rögzítve és elmentve."
+          : "Mérőállás rögzítve, de a helyi mentés sikertelen.",
     );
   }
   function edit(id: string, field: number | "date", value: string) {
@@ -170,7 +188,11 @@
       model.readings.push(row);
       model.year = yearFor(row.date);
       save();
-      toast("Mérés visszaállítva.");
+      toast(
+        model.readings.some((item) => item.id === row.id)
+          ? "Mérés visszaállítva."
+          : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+      );
     });
   }
   function opening() {
@@ -227,6 +249,25 @@
     }}
   />
 </section>
+<PdfActions
+  category="gas"
+  getData={() => $state.snapshot(model)}
+  report={gasReport}
+  limit={limitReadings}
+  {removedReadings}
+  parse={(value) => {
+    const parsed = migrateGas(value);
+    return validGas(parsed) ? parsed : null;
+  }}
+  describe={(data) => `${data.readings.length} gázmérés`}
+  onrestore={(data: AppState) => {
+    if (!disk.save(data)) return false;
+    model = data;
+    draft = { ...data.draft };
+    formError = "";
+    return true;
+  }}
+/>
 <section class="card mode-card">
   <Select
     id="gas-mode"
