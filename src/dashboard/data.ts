@@ -66,7 +66,7 @@ export function readSources() {
   };
 }
 
-type Sources = ReturnType<typeof readSources>;
+export type Sources = ReturnType<typeof readSources>;
 type Amount = { value: number | null; partial?: boolean };
 const missing: Amount = { value: null };
 

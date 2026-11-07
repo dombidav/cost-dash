@@ -5,6 +5,7 @@
   import { fmt, money } from "../lib/format";
   import { monthLabel } from "../lib/months";
   import { categories } from "../lib/pages";
+  import MonthComparison from "./MonthComparison.svelte";
   import {
     categoryColorProperty,
     categoryIds,
@@ -23,6 +24,14 @@
   let monthIndex = $state(currentIndex);
   let years = $derived(reportYears(sources, now));
   let months = $derived(reports(sources, year, now));
+  let showPrevious = $state(false);
+  let previousMonths = $derived(
+    reports(sources, year - 1, now).slice(0, months.length),
+  );
+  let previousAvailable = $derived(
+    previousMonths.some((row) => row.total !== null),
+  );
+  let compareTrend = $derived(showPrevious && previousAvailable);
   let selected = $derived(
     monthIndex === "year"
       ? months
@@ -64,12 +73,13 @@
     if (!canvas) return;
     const target = canvas;
     const rows = months;
+    const earlier = compareTrend ? previousMonths : [];
     let stopped = false;
     let dispose: (() => void) | undefined;
     void import("./chart")
       .then(({ drawMonthlyChart }) => {
         if (!stopped) {
-          dispose = drawMonthlyChart(target, rows);
+          dispose = drawMonthlyChart(target, rows, earlier);
           chartFailed = false;
         }
       })
@@ -251,6 +261,10 @@
     </details>
   </section>
 
+  {#if monthIndex !== "year" && selected[0]}
+    <MonthComparison row={selected[0]} {sources} {now} />
+  {/if}
+
   <section class="card" aria-labelledby="dashboard-trend">
     <h2 id="dashboard-trend">Havi alakulás · {year}</h2>
     <p class="expense-subtitle">
@@ -258,13 +272,35 @@
       használható adat.
     </p>
     {#if annualKnown}
+      {#if previousAvailable}
+        <div class="trend-switch">
+          <label
+            ><input
+              type="checkbox"
+              id="dashboard-previous-year"
+              bind:checked={showPrevious}
+              aria-describedby="dashboard-previous-year-help"
+            />
+            Előző év mutatása ({year - 1})</label
+          >
+          <Help
+            forId="dashboard-previous-year"
+            label="Előző év mutatása"
+            content={{
+              what: "Szaggatott vonal jelöli az előző év ismert havi összegeit.",
+              where:
+                "A havi összeg az adott hónapban elérhető kategóriákból áll össze.",
+            }}
+          />
+        </div>
+      {/if}
       {#if chartFailed}<p class="field-hint">
           A grafikon nem tölthető be. Az adatok alább táblázatban elérhetők.
         </p>{/if}
       <div
         class="trend-chart"
         role="img"
-        aria-label={`${year}. évi kiadások hónaponként, kategóriák szerint`}
+        aria-label={`${year}. évi kiadások hónaponként, kategóriák szerint${compareTrend ? `, az előző év ismert összegével (${year - 1})` : ""}`}
       >
         <canvas bind:this={canvas} aria-hidden="true"></canvas>
       </div>
@@ -277,6 +313,12 @@
               ></span>{categories[item.id].label}
             </li>{/if}
         {/each}
+        {#if compareTrend}
+          <li>
+            <span class="trend-reference" aria-hidden="true"></span>{year - 1} · ismert
+            havi összeg
+          </li>
+        {/if}
       </ul>
       <details class="expense-detail">
         <summary>A grafikon adatai szövegesen</summary>
@@ -295,11 +337,13 @@
               ><tr
                 ><th scope="col">Hónap</th>{#each categoryIds as id (id)}<th
                     scope="col">{categories[id].label}</th
-                  >{/each}<th scope="col">Összesen</th></tr
+                  >{/each}<th scope="col">Összesen</th>{#if compareTrend}<th
+                    scope="col">{year - 1} · összesen</th
+                  >{/if}</tr
               ></thead
             >
             <tbody>
-              {#each months as row (row.month)}
+              {#each months as row, index (row.month)}
                 <tr
                   ><th scope="row">{monthLabel(row.month)}</th>
                   {#each categoryIds as id (id)}
@@ -313,6 +357,10 @@
                   {/each}
                   <td>{row.total === null ? "Nincs adat" : money(row.total)}</td
                   >
+                  {#if compareTrend}
+                    {@const total = previousMonths[index]?.total}
+                    <td>{total == null ? "Nincs adat" : money(total)}</td>
+                  {/if}
                 </tr>
               {/each}
             </tbody>
@@ -380,6 +428,29 @@
     width: 10px;
     height: 10px;
     border-radius: 3px;
+  }
+  .trend-legend .trend-reference {
+    width: 20px;
+    height: 0;
+    border-top: 2px dashed var(--text);
+    border-radius: 0;
+  }
+  .trend-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .trend-switch label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+  }
+  .trend-switch input {
+    width: 18px;
+    min-height: 18px;
+    accent-color: var(--accent);
   }
   .trend-table {
     overflow: auto;
