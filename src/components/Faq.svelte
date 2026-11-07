@@ -91,6 +91,18 @@
   const questions: Record<PageId, Question[]> = {
     electricity: electricityQuestions,
     gas: gasQuestions,
+    subscriptions: [
+      {
+        question: "Mi történik, ha megszűnik egy előfizetés?",
+        answer:
+          "Szerkeszd a tételt, és add meg az utolsó fizetett hónapot. A korábbi hónapokban továbbra is szerepelni fog.",
+      },
+      {
+        question: "Hogyan rögzítsem a díjemelést?",
+        answer:
+          "Zárd le a régi tételt a régi áron fizetett utolsó hónappal, majd vedd fel az új árat a következő hónaptól.",
+      },
+    ],
     car: [
       {
         question: "Miért kell liter vagy literár is a fogyasztáshoz?",

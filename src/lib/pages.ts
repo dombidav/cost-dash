@@ -23,6 +23,12 @@ export const categories = {
     href: "./auto.html",
     icon: "↔",
   },
+  subscriptions: {
+    label: "Havidíjak",
+    title: "Havidíjak",
+    href: "./havidijak.html",
+    icon: "↻",
+  },
 } as const;
 
 export const pages = categories;

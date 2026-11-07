@@ -8,6 +8,11 @@ body[data-energy="car"] {
   --accent-rgb: 255 180 110;
 }
 
+body[data-energy="subscriptions"] {
+  --accent: #80e6ba;
+  --accent-rgb: 128 230 186;
+}
+
 .expense-checkbox {
   display: flex;
   align-items: center;

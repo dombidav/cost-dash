@@ -1,0 +1,246 @@
+<script lang="ts">
+  import { tick } from "svelte";
+  import EntryInput from "../components/EntryInput.svelte";
+  import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
+  import { parseNumber, today } from "../calendar";
+  import { money, uid } from "../lib/format";
+  import { monthLabel } from "../lib/months";
+  import { storage } from "../lib/storage.svelte";
+  import { toast } from "../lib/ui.svelte";
+  import {
+    activeIn,
+    initialSubscriptions,
+    SUBSCRIPTIONS_KEY,
+    validSubscription,
+    validSubscriptions,
+    type Subscription,
+  } from "./state";
+
+  const disk = storage(
+    SUBSCRIPTIONS_KEY,
+    initialSubscriptions,
+    validSubscriptions,
+  );
+  let rows = $state(disk.data);
+  const month = today().slice(0, 7);
+  let name = $state("");
+  let fee = $state("");
+  let start = $state(month);
+  let end = $state("");
+  let editing = $state("");
+  let error = $state("");
+  let active = $derived(
+    rows.filter((item) => activeIn(item, month)).sort((a, b) => b.fee - a.fee),
+  );
+  let inactive = $derived(
+    rows
+      .filter((item) => !activeIn(item, month))
+      .sort((a, b) => b.start.localeCompare(a.start)),
+  );
+  let monthly = $derived(active.reduce((sum, item) => sum + item.fee, 0));
+  let annual = $derived(monthly * 12);
+
+  function reset() {
+    name = fee = end = editing = error = "";
+    start = month;
+  }
+
+  async function edit(item: Subscription) {
+    editing = item.id;
+    name = item.name;
+    fee = String(item.fee);
+    start = item.start;
+    end = item.end;
+    error = "";
+    await tick();
+    document.getElementById("subscription-name")?.focus();
+  }
+
+  function save(event: SubmitEvent) {
+    event.preventDefault();
+    const item = {
+      id: editing || uid(),
+      name: name.trim(),
+      fee: parseNumber(fee),
+      start,
+      end,
+    };
+    if (!validSubscription(item)) {
+      error =
+        "Adj meg nevet, pozitív havidíjat és érvényes első hónapot. Az utolsó hónap nem lehet korábbi az elsőnél.";
+      return;
+    }
+    rows = [...rows.filter((row) => row.id !== editing), item];
+    disk.save(rows);
+    reset();
+    toast("A havidíjat elmentetted.");
+  }
+
+  function remove(item: Subscription) {
+    if (editing === item.id) reset();
+    rows = rows.filter((row) => row.id !== item.id);
+    disk.save(rows);
+    toast(
+      "A havidíjat minden hónapból törölted.",
+      () => {
+        rows = [...rows, item];
+        disk.save(rows);
+      },
+      "subscriptions-log",
+    );
+  }
+</script>
+
+<svelte:window onstorage={disk.onStorage} />
+<div class="expense-page">
+  <div class="expense-intro">
+    <span class="eyebrow">HAVIDÍJAK · RENDSZERES KIADÁSOK</span>
+    <h1>Havidíjak</h1>
+    <p>
+      Vedd fel egyszer a telefont, az internetet vagy a szemétdíjat. Az oldal
+      minden érintett hónapban számol velük.
+    </p>
+  </div>
+  {#if disk.warning}<p class="notice danger" role="alert">
+      {disk.warning}
+    </p>{/if}
+  <section class="card" aria-labelledby="subscription-summary">
+    <h2 id="subscription-summary">Rendszeres kiadások ebben a hónapban</h2>
+    <p class="expense-subtitle">
+      {monthLabel(month)} · Az éves összeg megmutatja, mire számíthatsz, ha a mostani
+      tételek 12 hónapig változatlanok.
+    </p>
+    <ExpenseMetrics
+      items={[
+        { label: "Havi összeg", value: money(monthly) },
+        { label: "Évente ezen a szinten", value: money(annual) },
+        { label: "Egy napra vetítve", value: money(annual / 365) },
+      ]}
+    />
+    {#if active[0]}<p class="field-hint">
+        Ha egy évig kihagynád a(z) <strong>{active[0].name}</strong> tételt, {money(
+          active[0].fee * 12,
+        )} maradna meg.
+      </p>{/if}
+  </section>
+
+  <section class="card" aria-labelledby="subscription-form">
+    <h2 id="subscription-form">
+      {editing ? "Havidíj szerkesztése" : "Új havidíj"}
+    </h2>
+    <p class="expense-subtitle">
+      A díj az első és az utolsó hónapban is számít. Ha folyamatos, hagyd üresen
+      az utolsó hónapot.
+    </p>
+    <form onsubmit={save}>
+      <div class="expense-fields">
+        <EntryInput
+          id="subscription-name"
+          label="Megnevezés"
+          bind:value={name}
+          placeholder="pl. Otthoni internet"
+          required
+          help={{
+            what: "A díj neve a listában.",
+            where:
+              "Használd a szolgáltatás nevét a számláról, vagy adj saját nevet.",
+          }}
+        />
+        <EntryInput
+          id="subscription-fee"
+          label="Havidíj · Ft"
+          bind:value={fee}
+          inputmode="decimal"
+          placeholder="pl. 4 990"
+          required
+          help={{
+            what: "A havonta esedékes bruttó összeg.",
+            where:
+              "A számlán vagy a szerződésben. Negyedéves díjnál a havi tervezéshez oszd el hárommal.",
+          }}
+        />
+        <EntryInput
+          id="subscription-start"
+          label="Első fizetett hónap"
+          type="month"
+          bind:value={start}
+          required
+          help={{
+            what: "Ettől a hónaptól számoljuk a díjat.",
+            where:
+              "A szolgáltatás első elszámolási hónapja vagy az új díj kezdete.",
+          }}
+        />
+        <EntryInput
+          id="subscription-end"
+          label="Utolsó fizetett hónap"
+          type="month"
+          bind:value={end}
+          min={start || undefined}
+          help={{
+            what: "Az utolsó hónap, amelyre még fizetned kell.",
+            where:
+              "A lemondás visszaigazolásán vagy a szerződés lejáratánál. Folyamatos díjnál hagyd üresen.",
+          }}
+        />
+      </div>
+      {#if editing}<p class="field-hint">
+          A módosítás a tétel teljes időszakára érvényes. Díjemelésnél zárd le a
+          régi tételt, majd vedd fel külön az új árat.
+        </p>{/if}
+      {#if error}<p class="field-error" role="alert">{error}</p>{/if}
+      <div class="expense-actions">
+        <button class="primary-button" type="submit"
+          >{editing ? "Módosítás mentése" : "Havidíj mentése"}</button
+        >
+        {#if editing}<button class="text-button" type="button" onclick={reset}
+            >Mégse</button
+          >{/if}
+      </div>
+    </form>
+  </section>
+
+  {#snippet list(items: Subscription[])}
+    <ul class="expense-list">
+      {#each items as item (item.id)}
+        <li>
+          <div>
+            <strong>{item.name} · {money(item.fee)}/hó</strong>
+            <p>
+              {monthLabel(item.start)} – {item.end
+                ? monthLabel(item.end)
+                : "folyamatos"}
+            </p>
+          </div>
+          <div class="expense-row-actions">
+            <button
+              type="button"
+              class="text-button"
+              aria-label={`Szerkesztés: ${item.name}`}
+              onclick={() => edit(item)}>Szerkesztés</button
+            >
+            <button
+              type="button"
+              class="text-button danger"
+              aria-label={`Törlés minden hónapból: ${item.name}`}
+              onclick={() => remove(item)}>Törlés</button
+            >
+          </div>
+        </li>
+      {/each}
+    </ul>
+  {/snippet}
+
+  <section class="card" aria-labelledby="subscriptions-log">
+    <h2 id="subscriptions-log" tabindex="-1">Rögzített havidíjak</h2>
+    {#if active.length}{@render list(active)}{:else}<p class="empty-state">
+        Ebben a hónapban nincs aktív havidíj.
+      </p>{/if}
+    {#if inactive.length}
+      <details class="expense-detail">
+        <summary>Korábbi és később induló tételek ({inactive.length})</summary>
+        {@render list(inactive)}
+      </details>
+    {/if}
+  </section>
+</div>
