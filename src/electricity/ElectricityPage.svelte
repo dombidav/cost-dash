@@ -49,6 +49,9 @@
   let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
   let point = $derived(model.points.find((p) => p.id === model.selected)!);
+  let hasMultiplePoints = $derived(model.points.length > 1);
+  let configuredTariffs = $derived(new Set(model.points.map((p) => p.tariff)));
+  let hasSolar = $derived(model.points.some((p) => p.solar !== "none"));
   let bill = $derived(periodResult(point));
   let years = $derived(
     [
@@ -92,7 +95,10 @@
     })),
   );
   let completeVolume = $derived(allRows.every((r) => r.period.volume !== null));
-  let completeCost = $derived(allRows.every((r) => r.period.total !== null));
+  let pricedPointCount = $derived(
+    allRows.filter((r) => r.period.total !== null).length,
+  );
+  let completeCost = $derived(pricedPointCount === allRows.length);
   let completeAnnual = $derived(
     allRows.every(
       (r) =>
@@ -490,9 +496,12 @@
     ><span>Új mérési pont</span><span aria-hidden="true">＋</span></button
   >
   <p>
-    Önálló A1, A2, vezérelt és H mérők egymás után felvehetők, külön naplóval és
-    kerettel. <a href="#electricity-aggregate">Minden mérő együtt ↓</a> ·
-    <a href="#electricity-tariffs">Mit jelentenek a tarifák? ↓</a>
+    Itt válthatsz a mérőid között. Mindegyikhez külön napló és kalkuláció
+    tartozik.
+    {#if hasMultiplePoints}<a href="#electricity-aggregate"
+        >Minden mérő együtt ↓</a
+      > ·{/if}
+    <a href="#electricity-tariffs">Áramtarifák összehasonlítása ↓</a>
   </p>
 </section>
 {#key point.id}
@@ -626,8 +635,8 @@
             /><span aria-hidden="true">kWh</span>
           </div>{/if}
         <p class="field-hint">
-          A teljes vételezési állás, nem az időszaki fogyasztás. A2-nél mindkét
-          regiszter kell.
+          A mérőn látható teljes állást add meg.
+          {#if point.tariff === "A2"}A csúcs- és a völgyidős állás is szükséges.{/if}
         </p>
         <div class="field-label">
           <label for="electricity-reading-date"
@@ -674,8 +683,8 @@
       <span class="badge neutral">{point.name}</span>
     </div>
     <p class="section-intro">
-      A kezdőnap beleszámít, a záró nap már nem. Teljes november: november 1. →
-      december 1. A keret a 365/366 napos kedvezményes évhez igazodik.
+      Becsüld meg, mennyi áramot használsz fel kedvezményes áron és mennyibe
+      kerül az aktív mérő fogyasztása a választott időszakban.
     </p>
     <div class="e-form-grid">
       <Select
@@ -759,34 +768,49 @@
         </p>
       </div>
       <div>
-        <span>Kedvezményes / korlátmentes</span><strong class="accent"
+        <span>Kedvezményes fogyasztás</span><strong class="accent"
           >{bill.cheap === null ? "—" : fmt(bill.cheap + (bill.unlimited ?? 0))}
           <small>kWh</small></strong
         >
         <p>
-          {fmt(bill.cap)} kWh normál keret, {bill.unlimitedDays} korlátmentes nap
+          {#if bill.cap > 0 || bill.unlimitedDays === 0}
+            {fmt(bill.cap)} kWh normál keret
+          {/if}
+          {#if bill.unlimitedDays > 0}
+            {bill.cap > 0 ? " · " : ""}{bill.unlimitedDays} nap fogyasztási korlát
+            nélkül
+          {/if}
         </p>
       </div>
-      <div>
-        <span>Keret feletti mennyiség</span><strong
-          >{fmt(bill.over)} <small>kWh</small></strong
-        >
-        <p>Csak a sáv feletti rész drágább</p>
-      </div>
+      {#if point.tariff !== "B_GEO"}<div>
+          <span>Keret feletti mennyiség</span><strong
+            >{fmt(bill.over)} <small>kWh</small></strong
+          >
+          <p>Csak a sáv feletti rész drágább</p>
+        </div>{/if}
       <div>
         <span>Becsült időszaki összeg</span><strong
           >{fmt(bill.total, 0)} <small>Ft</small></strong
         >
-        <p>Alapdíjjal, megadott jóváírással</p>
+        <p>{bill.credit ? "Alapdíjjal és jóváírással" : "Alapdíjjal együtt"}</p>
       </div>
     </div>
     <div class="e-cost-details">
-      <span
-        >Kedvezményes / H / GEO díj: <strong>{money(bill.lowCost)}</strong
-        ></span
-      ><span>Piaci díj: <strong>{money(bill.highCost)}</strong></span><span
-        >Alapdíj: <strong>{money(bill.base)}</strong></span
-      ><span>Jóváírás: <strong>−{money(bill.credit)}</strong></span>
+      {#if bill.lowCost !== null}
+        <span
+          >Kedvezményes energiadíj: <strong>{money(bill.lowCost)}</strong></span
+        >
+      {/if}
+      {#if bill.highCost !== null && bill.highCost > 0}
+        <span
+          >Keret feletti energiadíj: <strong>{money(bill.highCost)}</strong
+          ></span
+        >
+      {/if}
+      <span>Alapdíj: <strong>{money(bill.base)}</strong></span>
+      {#if bill.credit > 0}
+        <span>Jóváírás: <strong>−{money(bill.credit)}</strong></span>
+      {/if}
     </div>
     <p class="balance-note">
       {bill.outside
@@ -803,129 +827,141 @@
                   ? "Ez a fogyasztás költségbecslése, nem a feltöltés összege vagy egy élő egyenleg."
                   : "Sávkorrekció nélküli becslés; a korábbi megtakarítás és az éves elszámolás módosíthatja."}
     </p>
-    <p class="field-hint e-long-hint">
-      Két mérés közti H-idény- vagy évhatárnál a fogyasztást naparányosan
-      osztjuk; pontos köztes állásokkal finomítható. A2-nél fogyasztásarányos
-      zónabecslés készül. A 2026. januári támogatást nem vonjuk le
-      automatikusan; csak igazolt, ide tartozó jóváírást adj meg.
-    </p>
+    {#if point.tariff === "H"}
+      <p class="field-hint e-long-hint">
+        Ha két mérés között vált a fűtési idény, naparányosan osztjuk meg a
+        fogyasztást. Az idényhatáron rögzített mérés pontosítja a becslést.
+      </p>
+    {:else if point.tariff === "A2"}
+      <p class="field-hint e-long-hint">
+        A becslésben a kedvezményes mennyiséget a csúcs- és völgyfogyasztás
+        arányában osztjuk meg.
+      </p>
+    {/if}
   </section>
 {/key}
-<section class="card aggregate-card" id="electricity-aggregate">
-  <div class="card-heading">
-    <h2>Minden mérőd, egy helyen</h2>
-    <span class="badge">{model.points.length} MÉRÉSI PONT</span>
-  </div>
-  <p class="section-intro">
-    Közös időszak, önálló pontonként külön számítás. A kedvezményes keretek nem
-    vonhatók össze. A teljes összeg csak minden pont ismert adataival jelenik
-    meg.
-  </p>
-  <div class="e-aggregate-dates">
-    <Field
-      id="electricity-all-start"
-      label="Közös időszak kezdete"
-      value={model.aggregate.start}
-      oncommit={(v) => aggregate("start", v)}
-    /><Field
-      id="electricity-all-end"
-      label="Közös záró dátum · kizáró"
-      value={model.aggregate.end}
-      oncommit={(v) => aggregate("end", v)}
-    /><button
-      class="text-button"
-      type="button"
-      onclick={() => {
-        model.aggregate = {
-          start: point.billing.start,
-          end: point.billing.end,
-        };
-        save();
-      }}>Aktív mérő időszakának átvétele ↗</button
-    >
-  </div>
-  <div class="e-aggregate-metrics">
-    <div>
-      <span>Összes időszaki fogyasztás</span><strong
-        >{completeVolume
-          ? fmt(allRows.reduce((n, r) => n + r.period.volume!, 0))
-          : "—"} <small>kWh</small></strong
+{#if hasMultiplePoints}<section
+    class="card aggregate-card"
+    id="electricity-aggregate"
+  >
+    <div class="card-heading">
+      <h2>Minden mérőd, egy helyen</h2>
+      <span class="badge">{model.points.length} MÉRÉSI PONT</span>
+    </div>
+    <p class="section-intro">
+      Hasonlítsd össze a mérőid fogyasztását ugyanarra az időszakra, és nézd meg
+      a közös költséget. Minden mérő a saját keretével számol.
+    </p>
+    <div class="e-aggregate-dates">
+      <Field
+        id="electricity-all-start"
+        label="Közös időszak kezdete"
+        value={model.aggregate.start}
+        oncommit={(v) => aggregate("start", v)}
+      /><Field
+        id="electricity-all-end"
+        label="Közös záró dátum · kizáró"
+        value={model.aggregate.end}
+        oncommit={(v) => aggregate("end", v)}
+      /><button
+        class="text-button"
+        type="button"
+        onclick={() => {
+          model.aggregate = {
+            start: point.billing.start,
+            end: point.billing.end,
+          };
+          save();
+        }}>Aktív mérő időszakának átvétele ↗</button
       >
     </div>
-    <div>
-      <span>Összes időszaki költség</span><strong
-        >{completeCost ? money(knownCost) : "—"}</strong
-      >
-    </div>
-    <div>
-      <span>Összes éves költségbecslés</span><strong
-        >{completeAnnual
-          ? money(allRows.reduce((n, r) => n + r.annual.annualCost!.total!, 0))
-          : "—"}</strong
-      >
-    </div>
-  </div>
-  <p class="field-hint">
-    {allRows.filter((r) => r.period.total !== null).length}/{allRows.length} pont
-    költsége számolható; ismert időszaki részösszeg: {money(knownCost)}. Éves
-    összesítő: {model.year}/{model.year + 1}.
-  </p>
-  {#if aggregateBars.length}<Chart
-      id="electricity-aggregate-chart"
-      kind="benchmark"
-      unit="kWh"
-      bars={aggregateBars}
-      label="A mérési pontok időszaki áramfogyasztása"
-    />{/if}
-  <div class="point-summaries">
-    {#each allRows as row (row.point.id)}<article
-        class="point-summary"
-        class:is-selected={row.point.id === model.selected}
-      >
-        <div>
-          <h3>{row.point.name}</h3>
-          <p>{TARIFFS[row.point.tariff]} · {AREAS[row.point.area].label}</p>
-        </div>
-        <dl>
-          <div>
-            <dt>Közös időszak</dt>
-            <dd>{fmt(row.period.volume)} kWh · {money(row.period.total)}</dd>
-          </div>
-          <div>
-            <dt>Kedvezményes / korlátmentes</dt>
-            <dd>
-              {row.period.cheap === null
-                ? "—"
-                : fmt(row.period.cheap + (row.period.unlimited ?? 0))} kWh
-            </dd>
-          </div>
-          <div>
-            <dt>Keret felett</dt>
-            <dd>{fmt(row.period.over)} kWh</dd>
-          </div>
-          <div>
-            <dt>Éves adat / költségbecslés</dt>
-            <dd>
-              {fmt(row.annual.volume)} kWh · {money(
-                row.annual.annualCost?.total,
-              )}
-            </dd>
-          </div>
-        </dl>
-        <a href="#electricity-point" onclick={() => selectPoint(row.point.id)}
-          >{row.point.id === model.selected
-            ? "Aktív mérő ↑"
-            : "Részletek megnyitása ↑"}</a
+    <div class="e-aggregate-metrics">
+      <div>
+        <span>Összes időszaki fogyasztás</span><strong
+          >{completeVolume
+            ? fmt(allRows.reduce((n, r) => n + r.period.volume!, 0))
+            : "—"} <small>kWh</small></strong
         >
-      </article>{/each}
-  </div>
-  <p class="field-hint e-long-hint">
-    Ha az időszaki tényadatot más dátumokra adtad meg, a közös időszakra új adat
-    kell. A visszaigazolt jóváírás csak a saját pontos időszakában szerepel. Új
-    pontot kizárólag valóban önálló mérési pontra vegyél fel: ugyanaz a mérő más
-    néven nem kap új keretet.
-  </p>
-</section>
+      </div>
+      <div>
+        <span>Összes időszaki költség</span><strong
+          >{completeCost ? money(knownCost) : "—"}</strong
+        >
+      </div>
+      <div>
+        <span>Összes éves költségbecslés</span><strong
+          >{completeAnnual
+            ? money(
+                allRows.reduce((n, r) => n + r.annual.annualCost!.total!, 0),
+              )
+            : "—"}</strong
+        >
+      </div>
+    </div>
+    {#if !completeCost}<p class="field-hint">
+        {#if pricedPointCount}
+          {pricedPointCount}/{allRows.length} mérő költsége számolható. Ezek időszaki
+          részösszege: {money(knownCost)}.
+        {:else}
+          A közös időszakra még nincs számolható költség.
+        {/if}
+      </p>{/if}
+    {#if aggregateBars.length > 1}<Chart
+        id="electricity-aggregate-chart"
+        kind="benchmark"
+        unit="kWh"
+        bars={aggregateBars}
+        label="A mérési pontok időszaki áramfogyasztása"
+      />{/if}
+    <div class="point-summaries">
+      {#each allRows as row (row.point.id)}<article
+          class="point-summary"
+          class:is-selected={row.point.id === model.selected}
+        >
+          <div>
+            <h3>{row.point.name}</h3>
+            <p>{TARIFFS[row.point.tariff]} · {AREAS[row.point.area].label}</p>
+          </div>
+          <dl>
+            <div>
+              <dt>Közös időszak</dt>
+              <dd>{fmt(row.period.volume)} kWh · {money(row.period.total)}</dd>
+            </div>
+            <div>
+              <dt>Kedvezményes fogyasztás</dt>
+              <dd>
+                {row.period.cheap === null
+                  ? "—"
+                  : fmt(row.period.cheap + (row.period.unlimited ?? 0))} kWh
+              </dd>
+            </div>
+            {#if row.point.tariff !== "B_GEO"}<div>
+                <dt>Keret felett</dt>
+                <dd>{fmt(row.period.over)} kWh</dd>
+              </div>{/if}
+            <div>
+              <dt>Éves adat / költségbecslés</dt>
+              <dd>
+                {fmt(row.annual.volume)} kWh · {money(
+                  row.annual.annualCost?.total,
+                )}
+              </dd>
+            </div>
+          </dl>
+          <a href="#electricity-point" onclick={() => selectPoint(row.point.id)}
+            >{row.point.id === model.selected
+              ? "Aktív mérő ↑"
+              : "Részletek megnyitása ↑"}</a
+          >
+        </article>{/each}
+    </div>
+    <p class="field-hint e-long-hint">
+      Ha az időszaki tényadatot más dátumokra adtad meg, a közös időszakra új
+      adat kell. A visszaigazolt jóváírás csak a saját pontos időszakában
+      szerepel. Új pontot kizárólag valóban önálló mérési pontra vegyél fel:
+      ugyanaz a mérő más néven nem kap új keretet.
+    </p>
+  </section>{/if}
 <ElectricStats
   settings={model.stats}
   {point}
@@ -952,7 +988,7 @@
     onopening={opening}
   />
 {/key}
-<TariffGuide active={point.tariff} />
+<TariffGuide active={point.tariff} area={point.area} />
 <section class="comparison-section" id="electricity-comparison">
   <div class="eyebrow">
     <span class="tiny-line"></span>ÉRTHETŐEN A SZÁMLÁZÁSRÓL
@@ -993,7 +1029,7 @@
 </section>
 <details class="info-panel">
   <summary
-    ><span>ⓘ Tarifák, feltételezések és források</span><span aria-hidden="true"
+    ><span>ⓘ Hogyan számol az áramkalkulátor?</span><span aria-hidden="true"
       >＋</span
     ></summary
   >
@@ -1001,11 +1037,9 @@
     <div>
       <h3>Normál keret és külön pontok</h3>
       <p>
-        2523 kWh teljes kedvezményes évre, augusztus 1. → következő augusztus
-        1., önálló mérési pontonként. A 365/366 napot pontos törttel számoljuk.
-        A1 és B kerete nem csoportosítható át; A2 két regisztere egy keretet
-        használ. Jogosultság és igazolt többletkeret csak a megadott napokra
-        jár.
+        A mérő éves keretét a kedvezményes év 365 vagy 366 napjára osztjuk. Csak
+        a megadott jogosultsági napokkal számolunk. Ha két mérés közé évhatár
+        esik, a fogyasztást a két időszak napjainak arányában osztjuk meg.
       </p>
       <a
         href="https://www.mvmnext.hu/lakossagirezsi/gyakorikerdesek-aram"
@@ -1013,37 +1047,33 @@
         rel="noopener noreferrer">MVM keret és jogosultság ↗</a
       >
     </div>
+    {#if configuredTariffs.has("H")}<div>
+        <h3>H tarifa</h3>
+        <p>
+          A H-idényt október 15. → április 16. kizáró végdátummal modellezzük: a
+          fűtési időszak kWh-ja korlátmentes. Az idényen kívül naparányos normál
+          kerettel és A1-jellegű árral számolunk.
+        </p>
+      </div>{/if}
+    {#if configuredTariffs.has("D")}<div>
+        <h3>Dinamikus ár</h3>
+        <p>
+          D-nél 2027 előtt, illetve sáv felett negyedórás adatsor nélkül nincs
+          teljes összeg.
+        </p>
+      </div>{/if}
+    {#if hasSolar}<div>
+        <h3>Napelemes elszámolás</h3>
+        <p>
+          Bruttó elszámolásnál a hálózatból vételezett áram költségét becsüljük.
+          Szaldós elszámolásnál a kalkulátor a fogyasztást mutatja.
+        </p>
+      </div>{/if}
     <div>
-      <h3>H és B GEO</h3>
+      <h3>A becslés alapja</h3>
       <p>
-        A H-idényt október 15. → április 16. kizáró végdátummal modellezzük: a
-        fűtési időszak kWh-ja korlátmentes. Nyáron naparányos normál keret és
-        A1-jellegű ár. B GEO csak meglévő szerződésnél, támogatott területen,
-        korlátmentesen.
-      </p>
-    </div>
-    <div>
-      <h3>D és napelemes kivételek</h3>
-      <p>
-        D-nél 2027 előtt, illetve sáv felett negyedórás adatsor nélkül nincs
-        teljes összeg. A2 fogyasztásarányos zónabecslése nem igazolt számlabeli
-        algoritmus. Bruttó napelemnél csak a vételezés költsége látható,
-        betáplálást nem nettósítunk. Szaldóra ez a költségmodell nem
-        használható.
-      </p>
-      <a
-        href="https://www.mvmnext.hu/aram/pages/aloldal.jsp?id=16455107"
-        target="_blank"
-        rel="noopener noreferrer">MVM D tarifa ↗</a
-      >
-    </div>
-    <div>
-      <h3>Helyi adatok, dátumozott becslés</h3>
-      <p>
-        Az áram és a gáz adatai külön helyi tárhelyen maradnak. A 2027-es
-        értékek a díjak és szabályok változatlanságát feltételezik. Számlapontos
-        sávkorrekció, történeti tarifaváltás, HMKE-szaldó és dinamikus árimport
-        nincs modellezve.
+        A kiválasztott időszakra a jelenlegi mérőbeállításokat használjuk. A
+        korábbi tarifaváltás és az éves számlakorrekció eltérést okozhat.
       </p>
       <a
         href="https://www.mvmnext.hu/aram/pages/aloldal.jsp?id=14098370"

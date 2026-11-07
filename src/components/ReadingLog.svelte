@@ -81,8 +81,8 @@
         <span class="count">{rows.length} mérés</span>
       </div>
       <p class="section-intro">
-        Dátum szerint rendezett állások. Az érvényes módosítás mezőelhagyáskor
-        mentődik.
+        Kövesd, hogyan változik a fogyasztásod két leolvasás között, és javítsd
+        a korábban rögzített állásokat.
       </p>
     </div>
     <button class="text-button" type="button" onclick={onopening}

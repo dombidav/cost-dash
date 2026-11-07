@@ -402,7 +402,8 @@
       <span class="subtle-icon" aria-hidden="true">⚙</span>
     </div>
     <p class="section-intro">
-      Az MVM-számládon találod. Az érvényes módosítás mezőelhagyáskor mentődik.
+      Ezekből számoljuk ki, hány köbméter gáz fér bele a kedvezményes
+      energiakeretedbe.
     </p>
     <div class="settings-fields">
       <Field
@@ -432,7 +433,8 @@
       >
     </div>
     <p class="section-intro">
-      {model.billing.start}-től számolva, a hónap- és évváltást figyelembe véve.
+      Nézd meg, mennyi gáz fér bele a kedvezménybe a következő napokban,
+      {model.billing.start}-től számolva.
     </p>
     <div class="periods">
       {#each [1, 28, 30, 31] as d (d)}<div>
@@ -459,8 +461,8 @@
     >
   </div>
   <p class="section-intro">
-    A kezdőnap beleszámít, a záró dátum már a következő időszak kezdete. Például
-    november: november 1. → december 1.
+    Nézd meg, mennyi gáz fogyott vagy várható a választott időszakban, és ebből
+    mennyi fér bele a kedvezményes keretbe.
   </p>
   <div class="billing-inputs">
     <Field

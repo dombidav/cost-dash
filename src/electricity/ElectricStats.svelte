@@ -150,8 +150,8 @@
       <div class="eyebrow"><span class="tiny-line"></span>A SZÁMOK MÖGÖTT</div>
       <h2>A fogyasztásod, új megvilágításban.</h2>
       <p class="section-intro">
-        Az aktív mérési pont statisztikái. Az összes mérőt a közös összesítőben
-        is látod.
+        Kövesd az aktív mérő fogyasztását, vesd össze a hazai átlaggal, és
+        próbáld ki, mennyit spórolhatsz kevesebb fogyasztással.
       </p>
     </div>
     <span class="badge neutral">{basis[yearly.kind]}</span>
@@ -242,36 +242,40 @@
           : yearly.kind === "linear"
             ? `Legalább 30 nap napi átlagát vetítjük a jogosult év ${yearly.active} napjára. A használat évszakosan változhat, ezért ez becslés.`
             : yearly.kind === "manual"
-              ? "A beállított éves becslés, a részéves jogosultság napjaira arányosítva. H-nál a megadott fűtési aránnyal osztunk."
-              : "Legalább 30 nap mérés vagy kézi éves becslés kell. H-tarifánál rövid téli/nyári szakaszt nem szorzunk fel az egész évre."}
+              ? "A megadott éves becslésből, a jogosult napokra arányosítva."
+              : point.tariff === "H"
+                ? "Adj meg éves becslést, vagy rögzíts nyitó és záró állást a teljes évre."
+                : "Legalább 30 nap mérés vagy megadott éves becslés kell."}
+        {#if point.tariff === "H" && yearly.kind === "manual"}
+          A fűtési idényre a beállított fogyasztási aránnyal számolunk.
+        {/if}
       </p>
       <p class="stat-footnote">
         Becsült éves költség: {money(yearly.annualCost?.total)}, alapdíjjal,
         egyedi időszaki jóváírás nélkül.
       </p>
     </article>
-    <article class="card stat-card">
-      <div class="stat-top">
-        <h3>Mennyi fér még bele?</h3>
-        <span class="stat-symbol" aria-hidden="true">◷</span>
-      </div>
-      <div class="stat-number">
-        <span>{fmt(headroom, 2)}</span><small>kWh/nap</small>
-      </div>
-      <p class="stat-description">
-        {point.tariff === "B_GEO"
-          ? "B GEO-nál nincs normál 2523-as sávhatár."
-          : !yearly.complete
+    {#if point.tariff !== "B_GEO"}<article class="card stat-card">
+        <div class="stat-top">
+          <h3>Mennyi fér még bele?</h3>
+          <span class="stat-symbol" aria-hidden="true">◷</span>
+        </div>
+        <div class="stat-number">
+          <span>{fmt(headroom, 2)}</span><small>kWh/nap</small>
+        </div>
+        <p class="stat-description">
+          {!yearly.complete
             ? `A napi mozgástérhez ${yearly.activeStart}-i kezdőállás kell.`
             : yearly.remainingDays === 0
               ? "Nincs hátralévő nap ebben a lemért jogosultsági időszakban."
               : `${fmt(yearly.remaining)} kWh normál keret és ${yearly.remainingDays} nap maradt az utolsó méréskor.`}
-      </p>
-      <p class="stat-footnote">
-        A H-idény korlátmentes fogyasztása ezen felül értendő. A legutóbbi mérés
-        óta eltelt fogyasztást nem találjuk ki.
-      </p>
-    </article>
+        </p>
+        <p class="stat-footnote">
+          {#if point.tariff === "H"}A fűtési idény fogyasztása nem csökkenti ezt
+            a keretet.{/if}
+          A legutóbbi mérés óta eltelt fogyasztást nem találjuk ki.
+        </p>
+      </article>{/if}
     <article class="card stat-card">
       <div class="stat-top">
         <h3>A tavalyi önmagadhoz képest</h3>
@@ -363,8 +367,10 @@
           : "Éves fogyasztási adat és modellezhető tarifa szükséges."}
       </p>
       <p class="stat-footnote">
-        Az ársávokat és a H-idényt újraszámoljuk, az alapdíj változatlan. Az
-        egyedi időszaki jóváírást nem vetítjük ki az egész évre.
+        Újraszámoljuk az ársávokat{point.tariff === "H"
+          ? " a fűtési idényt figyelembe véve"
+          : ""}. Az alapdíj változatlan. Az egyedi időszaki jóváírást nem
+        vetítjük ki az egész évre.
       </p>
     </article>
     <article class="card stat-card">
@@ -414,8 +420,7 @@
           : "Az alapterületet és a háztartás létszámát a statisztika beállításai között adhatod meg."}
       </p>
       <p class="stat-footnote">
-        Az aktív mérő éves mért vagy becsült energiája. Külön H-mérőnél ez nem a
-        lakás teljes fogyasztása.
+        Az aktív mérő éves mért vagy becsült energiájából számoljuk.
       </p>
     </article>
     {#if point.billing.schedule === "prepaid"}<article class="card stat-card">

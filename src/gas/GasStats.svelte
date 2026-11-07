@@ -92,7 +92,8 @@
       <div class="eyebrow"><span class="tiny-line"></span>A SZÁMOK MÖGÖTT</div>
       <h2>Több rálátás, jobb döntések.</h2>
       <p class="section-intro">
-        Költségek, összehasonlítások és kapaszkodók a fogyasztásodhoz.
+        Nézd meg, hogyan alakul a gázfogyasztásod és a költséged, és vesd össze
+        a korábbi időszakokkal vagy a hazai átlaggal.
       </p>
     </div>
     <span class="badge neutral">{basis[result.annualKind]}</span>
@@ -104,9 +105,8 @@
       ></summary
     >
     <p class="section-intro">
-      Bruttó díjak, önálló, 20 m³/h alatti lakossági mérő alapértékeivel. Minden
-      vizsgált időszakra a megadott díjakat vetítjük, történeti árváltozást nem
-      rekonstruálunk.
+      A megadott bruttó díjakkal becsüljük a költségeket, a háztartásod
+      adataival pedig személyre szabjuk az összehasonlításokat.
     </p>
     <div class="stats-input-grid">
       {#each settings as field (field.key)}<Field

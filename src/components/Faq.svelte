@@ -17,6 +17,11 @@
       answer:
         "Az „Új mérési pont” gombbal add hozzá a következő mérőt. Mindegyikhez külön tarifát és mérőállásokat adhatsz meg, a közös összesítőben pedig együtt is láthatod a fogyasztásukat.",
     },
+    {
+      question: "Mi a különbség a kW és a kWh között?",
+      answer:
+        "A kW a készülék teljesítménye, a kWh az elfogyasztott energia. Egy 2 kW-os fűtőtest egy óra folyamatos működés alatt 2 kWh-t fogyaszt.",
+    },
   ];
 
   const gasQuestions = [

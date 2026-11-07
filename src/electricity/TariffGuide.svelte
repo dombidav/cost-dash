@@ -1,98 +1,79 @@
 <script lang="ts">
-  import type { Tariff } from "./types";
-  import { PRICE_SOURCE } from "./reference";
-  let { active }: { active: Tariff } = $props();
+  import { fmt } from "../lib/format";
+  import type { Area, Tariff } from "./types";
+  import {
+    AREAS,
+    officialRates,
+    PRICE_SOURCE,
+    supported,
+    TARIFFS,
+  } from "./reference";
+  let { active, area }: { active: Tariff; area: Area } = $props();
   const tariffs: {
     key: Tariff;
-    name: string;
-    summary: string;
     use: string;
-    supply: string;
-    allowance: string;
-    watch: string;
+    restriction: string;
+    pro: string;
+    con: string;
   }[] = [
     {
       key: "A1",
-      name: "A1 · egész napos",
-      summary: "Az általános háztartási áram.",
-      use: "Világítás, konnektorok és a legtöbb háztartási készülék.",
-      supply:
-        "Egész nap rendelkezésre áll; napszakonként nem változik az egységár.",
-      allowance: "Normál éves keret, felette magasabb díj.",
-      watch:
-        "Az „egész napos” az ellátást jelenti; a kedvezményes árnak továbbra is van fogyasztási határa.",
+      use: "Világításhoz, konnektorokhoz és háztartási készülékekhez.",
+      restriction: "Nincs külön készülékkorlát.",
+      pro: "Egész nap elérhető, napszaktól független árral.",
+      con: "A kedvezményes keret felett magasabb az egységár.",
     },
     {
       key: "A2",
-      name: "A2 · csúcs és völgy",
-      summary: "Két időzóna, kétféle egységár.",
-      use: "Általános háztartási használat, külön mért csúcs- és völgyfogyasztással.",
-      supply:
-        "Egész napos ellátás. A zónák időrendjét a szerződés és az elosztói feltételek adják.",
-      allowance:
-        "A két regiszter együtt használ egy normál keretet, nem kapnak külön-külön 2523 kWh-t.",
-      watch:
-        "A völgyidő nem azonos a B vezérelt árammal. A regisztereket a számlád jelölése szerint azonosítsd.",
+      use: "Háztartási fogyasztáshoz, ha a nagyobb terhelést át tudod tenni völgyidőre.",
+      restriction:
+        "Kétzónás mérés kell. A1 mellé kiépített külön A2-körön csak villanyautót szabad tölteni.",
+      pro: "Egész napos ellátás, völgyidőben olcsóbb áram.",
+      con: "Csúcsidőben drágább. A két zónának egy közös kerete van.",
     },
     {
       key: "B_BASIC",
-      name: "B alap · vezérelt",
-      summary: "Külön áramkör, szakaszos ellátás.",
-      use: "Például külön bekötött hőtárolós bojler, amely biztonságosan működhet megszakításokkal.",
-      supply:
-        "Az elosztó kapcsolja, jellemzően napi összesen 8 órára; nem kizárólag éjszaka.",
-      allowance:
-        "Az önálló vezérelt mérési pontnak a nappali pontétól külön normál kerete van.",
-      watch:
-        "Rögzített, külön mért bekötés szükséges. Nem tetszőleges konnektoros készülékhez használható.",
+      use: "Fixen bekötött, szakaszosan is biztonságos készülékhez, például tárolós bojlerhez.",
+      restriction:
+        "Konnektoros vagy folyamatos ellátást igénylő készülékhez tilos.",
+      pro: "Kedvezőbb ár és a nappali mérőtől külön keret.",
+      con: "Az elosztó kapcsolja, naponta összesen legalább 8 órára.",
     },
     {
       key: "B_COMFORT",
-      name: "B Komfort · napi 12 óra",
-      summary: "Hosszabb vezérelt ellátás.",
-      use: "Megfelelő, külön bekötött berendezésekhez, ahol ez a tarifa elérhető.",
-      supply:
-        "Napi összesen 12 óra vezérelt ellátás; az időszakokat az elosztó határozza meg.",
-      allowance: "Normál, időarányos keret és külön keret feletti díj.",
-      watch:
-        "A kalkulátor díjtáblájában MVM Démász területen szerepel. Az elérhetőséget a saját szerződésednél ellenőrizd.",
+      use: "Hosszabb felfűtést igénylő, fixen bekötött készülékhez.",
+      restriction:
+        "Konnektoros vagy folyamatos ellátást igénylő készülékhez tilos.",
+      pro: "Naponta összesen legalább 12 óra ellátás.",
+      con: "Csak az MVM Démász területén érhető el, külön mérés és vezérlés kell.",
     },
     {
       key: "H",
-      name: "H · hőszivattyús",
-      summary: "Fűtési idényhez kötött kedvezmény.",
-      use: "Az elosztó által elfogadott hőszivattyúhoz és kapcsolódó berendezésekhez, külön mért áramkörön.",
-      supply:
-        "A kedvezményes H-idény október 15. – április 15., egész napos ellátással.",
-      allowance:
-        "Az idényben nincs normál fogyasztási korlát. Az idényen kívüli részre más díj és időarányos normál keret vonatkozik.",
-      watch:
-        "Egy elektromos fűtőtest önmagában nem jogosít H tarifára. A műszaki megfelelést és a jogosultságot az elosztó vizsgálja.",
+      use: "Jóváhagyott hőszivattyúhoz vagy megújuló hőt hasznosító rendszerhez, külön mérőn.",
+      restriction:
+        "Sima villanyradiátorhoz, konnektorhoz és más háztartási fogyasztóhoz tilos.",
+      pro: "Október 15. és április 15. között egész napos kedvezmény, fogyasztási korlát nélkül.",
+      con: "Külön bekötés kell. Idényen kívül eltérő díj és időarányos keret érvényes.",
     },
     {
       key: "B_GEO",
-      name: "B GEO · meglévő szerződés",
-      summary: "Korábbi hőszivattyús árszabás.",
-      use: "Már meglévő, megfelelő B GEO-szerződéssel működő berendezésekhez.",
-      supply:
-        "Speciális vezérlési feltételekkel; a saját szerződésed szerinti ellátás.",
-      allowance: "Nincs normál 2523 kWh-s sávhatár.",
-      watch:
-        "2021. szeptember 1-jétől újonnan nem igényelhető. ELMŰ Hálózati és MVM Émász területen meglévő szerződéshez szerepel a kalkulátorban.",
+      use: "A meglévő B GEO-szerződésben szereplő hőszivattyúhoz.",
+      restriction: "Más készüléket tilos rákötni. Új szerződés nem köthető.",
+      pro: "Lakossági használatnál a teljes fogyasztás kedvezményes.",
+      con: "Vezérelt ellátás. Hőszivattyúcsere vagy bővítés esetén tarifát kell váltani.",
     },
     {
       key: "D",
-      name: "D · dinamikus",
-      summary: "A keret felett változó piaci ár.",
-      use: "Feltételeknek megfelelő, távleolvasott, havi idősoros A1 mérési ponthoz, külön szerződéssel.",
-      supply:
-        "A normál keretig fix kedvezményes díj, felette az ár időszakonként változik.",
-      allowance:
-        "A kedvezményes sáv nem válik dinamikussá; a felette fogyasztott rész költsége a fogyasztás időzítésétől is függ.",
-      watch:
-        "Legkorábban 2027. január 1-jétől alkalmazható. A keret feletti összeghez negyedórás fogyasztási és áradatok kellenek; ezek nélkül itt nincs teljes forintösszeg.",
+      use: "Időzíthető fogyasztáshoz, távleolvasott, havi idősoros A1-es mérőn.",
+      restriction:
+        "Vezérelt mérőre, előre fizetős mérőhöz és szaldós napelem mellé nem választható.",
+      pro: "A keretig fix kedvezményes ár. Felette olcsóbb időszakokra időzíthetsz.",
+      con: "A keret feletti ár negyedóránként változhat és magas is lehet.",
     },
   ];
+  let availableTariffs = $derived(
+    tariffs.filter(({ key }) => supported(area, key)),
+  );
 </script>
 
 <section
@@ -103,75 +84,83 @@
   <div class="eyebrow">
     <span class="tiny-line"></span>ISMERD MEG AZ ÁRSZABÁSOD
   </div>
-  <h2 id="tariff-guide-title">Mit jelentenek az áramtarifák?</h2>
+  <h2 id="tariff-guide-title">Áramtarifák összehasonlítása</h2>
   <p class="comparison-intro">
-    A tarifa azt mondja meg, milyen feltételekkel és áron kapod az áramot. A
-    számlázási mód pedig azt, mikor és milyen adatok alapján számoltok el. A
-    szerződött tarifát a számla részletezőjén vagy a szerződésedben találod.
+    Hasonlítsd össze, melyik tarifához milyen készüléket köthetsz, mikor kapsz
+    áramot, és milyen kedvezmény jár. A saját tarifádat a számla részletezőjén
+    találod.
   </p>
-  <div class="tariff-basics">
-    <div>
-      <strong>kW = teljesítmény</strong>
-      <p>
-        A készülék pillanatnyi energiaigénye. Egy 2 kW-os fűtőtest 1 óra
-        folyamatos működéssel 2 kWh-t fogyaszt.
-      </p>
-    </div>
-    <div>
-      <strong>kWh = energia</strong>
-      <p>
-        Ezt méri a villanyóra, és ennek mennyiségét számlázzák. Két összegzett
-        mérőállás különbsége adja az időszaki fogyasztást.
-      </p>
-    </div>
-    <div>
-      <strong>Külön pont, külön keret</strong>
-      <p>
-        A normál kedvezményes mennyiség 2523 kWh/év, időarányosan. A külön
-        nappali és vezérelt pont keretét nem lehet átcsoportosítani.
-      </p>
-    </div>
-  </div>
   <div class="tariff-grid">
     {#each tariffs as tariff (tariff.key)}<article
         class="card tariff-card"
         class:is-selected={active === tariff.key}
       >
         <div class="card-heading">
-          <h3>{tariff.name}</h3>
+          <h3>{TARIFFS[tariff.key]}</h3>
           {#if active === tariff.key}<span class="badge"
               >AKTÍV MÉRŐ TARIFÁJA</span
             >{/if}
         </div>
-        <p class="tariff-summary">{tariff.summary}</p>
         <dl>
           <dt>Mire való?</dt>
           <dd>{tariff.use}</dd>
-          <dt>Mikor kap áramot?</dt>
-          <dd>{tariff.supply}</dd>
-          <dt>Hogyan működik a kedvezmény?</dt>
-          <dd>{tariff.allowance}</dd>
+          <dt class="tariff-restriction">Mire tilos használni?</dt>
+          <dd>{tariff.restriction}</dd>
+          <dt>Előny</dt>
+          <dd>{tariff.pro}</dd>
+          <dt>Hátrány</dt>
+          <dd>{tariff.con}</dd>
         </dl>
-        <p class="tariff-watch">
-          <strong>Erre figyelj:</strong>
-          {tariff.watch}
-        </p>
       </article>{/each}
   </div>
+  <details class="card tariff-prices">
+    <summary>Egységárak az aktív mérő elosztói területén</summary>
+    <p>
+      {AREAS[area].label} · A kalkulátor bruttó alapértékei Ft/kWh-ban. A saját mérőd
+      díjait a beállításoknál találod.
+    </p>
+    <dl>
+      {#each availableTariffs as { key } (key)}
+        {@const rates = officialRates(area, key)}
+        <div>
+          <dt>{TARIFFS[key]}</dt>
+          <dd>
+            {#if key === "H"}
+              Fűtési idényben {fmt(rates.low, 3)} · idényen kívül kedvezményesen {fmt(
+                rates.second,
+                3,
+              )}
+            {:else if key === "A2"}
+              Kedvezményes csúcs {fmt(rates.low, 3)} · völgy {fmt(
+                rates.second,
+                3,
+              )}
+            {:else}
+              Kedvezményes {fmt(rates.low, 3)}
+            {/if}
+            {#if key !== "B_GEO"}
+              · keret felett {rates.market === null
+                ? "változó ár"
+                : fmt(rates.market, 3)}
+            {/if}
+          </dd>
+        </div>
+      {/each}
+    </dl>
+  </details>
   <div class="comparison-footnote">
     <span class="info-icon" aria-hidden="true">i</span>
     <p>
-      A kártyák tájékozódásra valók. Tarifaváltáshoz szolgáltatói egyeztetés és
-      esetenként műszaki átalakítás szükséges; az itteni választó a kalkulátort
-      állítja át. A kedvezményes év augusztus 1. – július 31., nem feltétlenül
-      egyezik az éves leolvasási ciklussal.
+      A normál keret mérési pontonként 2523 kWh egy teljes kedvezményes évre
+      (augusztus 1. – július 31.). A külön nappali és vezérelt mérő kerete nem
+      vonható össze. Tarifaváltásról egyeztess a szolgáltatóddal.
     </p>
   </div>
   <p class="tariff-sources">
-    Hivatalos források · ellenőrizve: 2026. 11. 06. · <a
-      href="https://www.mvmnext.hu/aram/pages/aloldal.jsp?id=791"
+    Hivatalos források · <a
+      href="https://www.mvmnext.hu/aram/servlet/download?id=16548&type=file"
       target="_blank"
-      rel="noopener noreferrer">MVM árszabások ↗</a
+      rel="noopener noreferrer">MVM tarifafeltételek ↗</a
     >
     ·
     <a
@@ -197,3 +186,34 @@
     >
   </p>
 </section>
+
+<style>
+  .tariff-prices {
+    margin-top: 12px;
+    padding: 8px 16px;
+    overflow-wrap: anywhere;
+  }
+  summary {
+    cursor: pointer;
+    min-height: 32px;
+    padding-block: 6px;
+    font-weight: 600;
+  }
+  .tariff-prices p,
+  .tariff-prices dd {
+    color: var(--muted);
+  }
+  .tariff-prices dl {
+    margin: 0 0 8px;
+  }
+  .tariff-prices dl > div {
+    border-top: 1px solid var(--border);
+    padding: 8px 0;
+  }
+  .tariff-prices dt {
+    font-weight: 600;
+  }
+  .tariff-prices dd {
+    margin: 2px 0 0;
+  }
+</style>

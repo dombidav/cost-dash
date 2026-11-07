@@ -88,8 +88,8 @@
     <div class="accordion-clip">
       <div class="accordion-content">
         <p class="section-intro">
-          Kezdd a számládon szereplő elosztóval és tarifával. A díjakat
-          kitöltjük; az érvényes módosítások automatikusan mentődnek.
+          Itt állítod be, milyen díjakkal és kedvezményekkel számoljunk ennél a
+          mérőnél.
         </p>
 
         <div class="basic-grid">
@@ -137,13 +137,15 @@
             target="_blank"
             rel="noopener noreferrer">KSH 2025-ös háztartási átlaga</a
           >
-          alapján kerekítve ({fmt(NATIONAL_MONTHLY * 12)} kWh/év). Ez nem mérés vagy
-          kedvezményes keret; külön B/H-mérőnél saját éves mennyiséget adj meg.
+          alapján kerekítve ({fmt(NATIONAL_MONTHLY * 12)} kWh/év).
+          {#if point.tariff === "H" || point.tariff.startsWith("B_")}
+            Ehhez a külön mérőhöz a saját várható éves fogyasztásodat add meg.
+          {/if}
         </p>
 
         <div class="tariff-explanation">
           <p>{descriptions[point.tariff]}</p>
-          <a href="#electricity-tariffs">Tarifák érthetően ↗</a>
+          <a href="#electricity-tariffs">Áramtarifák összehasonlítása ↗</a>
         </div>
         {#if point.tariff === "A2" || point.tariff === "H"}
           <div class="context-setting">
@@ -412,7 +414,7 @@
         <div class="point-management">
           <p>
             {canRemove
-              ? "Már nincs szükséged erre a mérőre? Az eltávolítás rövid ideig visszavonható."
+              ? "A mérő eltávolításával a hozzá tartozó méréseket is törlöd."
               : "Ez az egyetlen mérőd. Az eltávolításhoz előbb vegyél fel egy másikat."}
           </p>
           <button
