@@ -1,360 +1,310 @@
 <script lang="ts">
-  import { tick } from "svelte";
+  import Chart from "../components/Chart.svelte";
   import EntryInput from "../components/EntryInput.svelte";
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
-  import Help from "../components/Help.svelte";
-  import { monthDays, parseNumber, today } from "../calendar";
-  import { fmt, money } from "../lib/format";
+  import PageIntro from "../components/PageIntro.svelte";
+  import ReadingLog from "../components/ReadingLog.svelte";
+  import { readingError } from "../calculator";
+  import { monthPeriod, parseNumber, today } from "../calendar";
+  import { percentChange } from "../lib/consumption";
+  import { fmt, money, signed, uid } from "../lib/format";
   import { monthLabel } from "../lib/months";
   import { storage } from "../lib/storage.svelte";
   import { toast } from "../lib/ui.svelte";
+  import type { Reading } from "../types";
+  import WaterExamples from "./WaterExamples.svelte";
+  import WaterSettings from "./WaterSettings.svelte";
   import {
     initialWater,
-    presets,
+    migrateWater,
     validWater,
-    validWaterMonth,
     waterBill,
+    waterIntervals,
     WATER_KEY,
-    type WaterMonth,
-    type WaterRates,
   } from "./state";
 
-  const disk = storage(WATER_KEY, initialWater, validWater);
+  const disk = storage(WATER_KEY, initialWater, validWater, migrateWater);
   let data = $state(disk.data);
-  const currentMonth = today().slice(0, 7);
-  let month = $state(currentMonth);
-  let volume = $state("");
-  let sewerVolume = $state("");
-  let city = $state(disk.data.rates.city);
-  let water = $state(String(disk.data.rates.water));
-  let sewer = $state(String(disk.data.rates.sewer));
-  let base = $state(String(disk.data.rates.base));
-  let people = $state(String(disk.data.rates.people));
-  let editing = $state("");
+  const now = today();
+  let date = $state(now);
+  let value = $state("");
   let error = $state("");
-  let input = $derived({
-    month,
-    volume: parseNumber(volume),
-    sewerVolume: sewerVolume.trim() ? parseNumber(sewerVolume) : null,
-    rates: {
-      city,
-      water: parseNumber(water),
-      sewer: parseNumber(sewer),
-      base: parseNumber(base),
-      people: parseNumber(people),
-    },
-  });
-  let preview = $derived(validWaterMonth(input) ? waterBill(input) : null);
+  let intervals = $derived(waterIntervals(data.readings));
+  let latest = $derived(intervals.at(-1));
+  let previous = $derived(intervals.at(-2));
   let history = $derived(
+    data.readings.map((item) => ({
+      ...item,
+      values: [item.value],
+      total: item.value,
+    })),
+  );
+  let archive = $derived(
     [...data.months].sort((a, b) => b.month.localeCompare(a.month)),
   );
-  let latest = $derived(history[0]);
-  const annualAverage = 37.2;
+  const nationalLitersPerDay = 37_200 / 366;
 
-  function applyRates(rates: WaterRates) {
-    city = rates.city;
-    water = String(rates.water);
-    sewer = String(rates.sewer);
-    base = String(rates.base);
-    people = String(rates.people);
-  }
-
-  function selectCity(value: string) {
-    city = value;
-    const preset = presets.find((item) => item.city === value);
-    if (preset) {
-      water = String(preset.water);
-      sewer = String(preset.sewer);
-    }
-  }
-
-  function reset() {
-    editing = "";
-    month = currentMonth;
-    volume = sewerVolume = error = "";
-    applyRates(data.rates);
-  }
-
-  async function edit(item: WaterMonth) {
-    editing = month = item.month;
-    volume = String(item.volume);
-    sewerVolume = item.sewerVolume === null ? "" : String(item.sewerVolume);
-    applyRates(item.rates);
-    error = "";
-    await tick();
-    document.getElementById("water-volume")?.focus();
-  }
-
-  function save(event: SubmitEvent) {
-    event.preventDefault();
-    if (!validWaterMonth(input)) {
-      error =
-        "Ellenőrizd a hónapot, a nemnegatív mennyiségeket és díjakat, valamint a létszámot (1–100 fő).";
-      return;
-    }
-    if (data.months.some((item) => item.month === month && month !== editing)) {
-      error =
-        "Ez a hónap már szerepel a naplóban. Módosításhoz válaszd a Szerkesztés gombot a tételnél.";
-      return;
-    }
-    const item = { ...input, rates: { ...input.rates } };
-    data = {
-      rates: editing ? data.rates : item.rates,
-      months: [...data.months.filter((row) => row.month !== editing), item],
-    };
+  function writeReading(item: Reading) {
+    const message = readingError(item, data.readings, now)?.message;
+    if (message) return message;
+    data.readings = [
+      ...data.readings.filter((row) => row.id !== item.id),
+      item,
+    ];
     disk.save(data);
-    reset();
-    toast("A vízfogyasztás bekerült a naplóba.");
   }
 
-  function remove(item: WaterMonth) {
-    if (editing === item.month) reset();
-    data.months = data.months.filter((row) => row.month !== item.month);
+  function record(event: SubmitEvent) {
+    event.preventDefault();
+    error = writeReading({ id: uid(), date, value: parseNumber(value) }) ?? "";
+    if (error) return;
+    date = now;
+    value = "";
+    toast("A vízóraállás bekerült a naplóba.");
+  }
+
+  function edit(id: string, field: number | "date", input: string) {
+    const item = data.readings.find((row) => row.id === id);
+    if (!item) return "Ez a mérés már nem található.";
+    return writeReading(
+      field === "date"
+        ? { ...item, date: input.trim() }
+        : { ...item, value: parseNumber(input) },
+    );
+  }
+
+  function remove(id: string) {
+    const item = data.readings.find((row) => row.id === id);
+    if (!item) return;
+    data.readings = data.readings.filter((row) => row.id !== id);
     disk.save(data);
     toast(
-      "A víztételt törölted.",
+      "A vízóraállást törölted.",
       () => {
-        if (data.months.some((row) => row.month === item.month)) return;
+        const message = writeReading(item);
+        if (message) toast(message);
+      },
+      "water-history-title",
+    );
+  }
+
+  function removeArchived(month: string) {
+    const item = data.months.find((row) => row.month === month);
+    if (!item) return;
+    data.months = data.months.filter((row) => row.month !== month);
+    disk.save(data);
+    toast(
+      "A korábbi havi tételt törölted.",
+      () => {
         data.months = [...data.months, item];
         disk.save(data);
       },
-      "water-log",
+      "water-reading",
     );
   }
 </script>
 
 <svelte:window onstorage={disk.onStorage} />
 <div class="expense-page">
-  <div class="expense-intro">
-    <span class="eyebrow">VÍZ · HAVI NAPLÓ</span>
-    <h1>Vízkalkulátor</h1>
-    <p>
-      Nézd meg, mennyibe kerül az elfogyasztott víz, és mennyi ebből a
-      csatornadíj.
-    </p>
-  </div>
+  <PageIntro
+    eyebrow="VÍZ, CSEPPRŐL CSEPPRE"
+    title="Lásd, hová folyik"
+    description="A vízórád állásaiból kiszámoljuk a fogyasztást, az ivóvíz díját és a csatornaköltséget."
+  />
   {#if disk.warning}<p class="notice danger" role="alert">
       {disk.warning}
     </p>{/if}
 
-  <section class="card" aria-labelledby="water-title">
-    <h2 id="water-title">
-      {editing
-        ? "Havi vízfogyasztás szerkesztése"
-        : "Havi vízfogyasztás rögzítése"}
-    </h2>
+  <WaterSettings
+    rates={data.rates}
+    onupdate={(rates) => {
+      data.rates = rates;
+      disk.save(data);
+    }}
+  />
+
+  <section class="card" aria-labelledby="water-reading">
+    <h2 id="water-reading" tabindex="-1">Vízóraállás rögzítése</h2>
     <p class="expense-subtitle">
-      A havi fogyasztást a számláról vagy két egymást követő mérőállás
-      különbségéből adhatod meg.
+      Két leolvasásból megmutatjuk, hány köbméter vizet használtál közöttük.
     </p>
-    <form onsubmit={save}>
+    <form onsubmit={record}>
       <div class="expense-fields">
         <EntryInput
-          id="water-month"
-          label="Hónap"
-          type="month"
-          bind:value={month}
-          max={currentMonth}
+          id="water-date"
+          label="Leolvasás dátuma"
+          type="date"
+          bind:value={date}
+          min="1900-01-01"
+          max={now}
           required
           help={{
-            what: "A fogyasztás hónapja.",
-            where: "A számla elszámolási időszakánál.",
-          }}
-        />
-        <EntryInput
-          id="water-volume"
-          label="Ivóvízfogyasztás · m³"
-          inputmode="decimal"
-          bind:value={volume}
-          placeholder="pl. 6,2"
-          required
-          help={{
-            what: "A felhasznált vízmennyiség köbméterben.",
+            what: "A nap, amikor leolvastad az órát. Alapból a mai nap.",
             where:
-              "A számla részletezőjén vagy két vízóraállás különbségeként.",
-          }}
-        />
-        <div class="field">
-          <div class="field-label">
-            <label for="water-city">Település</label><Help
-              forId="water-city"
-              label="Település"
-              content={{
-                what: "A választás betölti a 2026-os díjtáblázat egységárait.",
-                where:
-                  "Válaszd a fogyasztási helyet, vagy add meg egyedileg a számlád díjait.",
-              }}
-            />
-          </div>
-          <select
-            id="water-city"
-            value={city}
-            onchange={(event) => selectCity(event.currentTarget.value)}
-            aria-describedby="water-city-help"
-          >
-            {#each presets as preset (preset.city)}<option value={preset.city}
-                >{preset.city}</option
-              >{/each}
-            <option value="">Egyedi díjak</option>
-          </select>
-        </div>
-        <EntryInput
-          id="water-rate"
-          label="Ivóvízdíj · Ft/m³"
-          inputmode="decimal"
-          bind:value={water}
-          required
-          help={{
-            what: "Egy köbméter ivóvíz bruttó díja.",
-            where: "A számlán az ivóvíz díjtételénél.",
+              "A saját feljegyzésedben vagy a számlán a mérőállás mellett.",
           }}
         />
         <EntryInput
-          id="water-sewer-rate"
-          label="Csatornadíj · Ft/m³"
+          id="water-value"
+          label="Vízóra állása · m³"
           inputmode="decimal"
-          bind:value={sewer}
+          bind:value
+          placeholder="pl. 125,4"
           required
           help={{
-            what: "A szennyvízelvezetés és vízterhelés bruttó egységára együtt. Csatorna nélkül nulla.",
-            where: "A számlán a szennyvíz és vízterhelés sorában.",
+            what: "A vízóra teljes állása, nem az időszaki fogyasztás. A tizedeseket vesszővel is megadhatod.",
+            where: "A vízóra számlálóján vagy a számla mérőállásai között.",
           }}
         />
       </div>
-      <details class="expense-detail">
-        <summary>Alapdíj, eltérő csatornamennyiség és háztartásméret</summary>
-        <div class="expense-fields">
-          <EntryInput
-            id="water-base"
-            label="Havi alapdíj · Ft"
-            inputmode="decimal"
-            bind:value={base}
-            help={{
-              what: "Az ivóvíz és a csatorna havi bruttó alapdíja együtt, ha van.",
-              where: "A számla alapdíj sorainál. Ha nincs, hagyd nullán.",
-            }}
-          />
-          <EntryInput
-            id="water-sewer-volume"
-            label="Csatornamennyiség · m³"
-            inputmode="decimal"
-            bind:value={sewerVolume}
-            placeholder="Alapból az ivóvíz mennyisége"
-            help={{
-              what: "Csak akkor add meg, ha a csatornára elszámolt mennyiség eltér az ivóvízfogyasztástól.",
-              where:
-                "A számla szennyvíz sorában, például locsolási kedvezménynél.",
-            }}
-          />
-          <EntryInput
-            id="water-people"
-            label="Háztartás létszáma · fő"
-            inputmode="numeric"
-            bind:value={people}
-            help={{
-              what: "Csak az egy főre jutó összehasonlítást befolyásolja.",
-              where:
-                "Add meg, hányan használják rendszeresen a háztartásban a vizet.",
-            }}
-          />
-        </div>
-      </details>
-      {#if preview}
-        <ExpenseMetrics
-          items={[
-            { label: "Ivóvíz", value: money(preview.water) },
-            { label: "Csatorna", value: money(preview.sewer) },
-            { label: "Alapdíj", value: money(preview.base) },
-            { label: "Becsült havi díj", value: money(preview.total) },
-          ]}
-        />
-      {/if}
       {#if error}<p class="field-error" role="alert">{error}</p>{/if}
       <div class="expense-actions">
-        <button class="primary-button" type="submit"
-          >{editing ? "Módosítás mentése" : "Mentés a naplóba"}</button
-        >
-        {#if editing}<button type="button" class="text-button" onclick={reset}
-            >Mégse</button
-          >{/if}
+        <button class="primary-button" type="submit">Mérőállás mentése</button>
       </div>
     </form>
-    <p class="field-hint">
-      A 2026-os táblázat bruttó egységárakat tartalmaz, alapdíj nélkül. Mindig a
-      saját számlád díjai az irányadók.
-    </p>
   </section>
+
+  <section class="card" aria-labelledby="water-usage">
+    <h2 id="water-usage">Az utolsó két leolvasás között</h2>
+    {#if latest}
+      {@const cost = waterBill(
+        latest.volume,
+        latest.start,
+        latest.end,
+        data.rates,
+      )}
+      <p class="expense-subtitle">
+        {latest.start} – {latest.end} · {latest.days} nap. A becslés a
+        <a href="#water-settings">jelenlegi díjaiddal</a> készül.
+      </p>
+      <ExpenseMetrics
+        items={[
+          { label: "Elfogyasztott víz", value: `${fmt(latest.volume, 3)} m³` },
+          { label: "Becsült összes díj", value: money(cost.total) },
+          { label: "Ivóvíz", value: money(cost.water) },
+          { label: "Csatorna", value: money(cost.sewer) },
+          ...(data.rates.base
+            ? [{ label: "Időarányos alapdíj", value: money(cost.base) }]
+            : []),
+        ]}
+      />
+    {:else}<p class="empty-state">
+        A fogyasztáshoz és a díjbecsléshez két eltérő napra rögzített állás
+        kell.
+      </p>{/if}
+  </section>
+
+  <ReadingLog
+    id="water-history"
+    readingId="water-reading"
+    rows={history}
+    unit="m³"
+    digits={3}
+    columns={["Vízóraállás"]}
+    onedit={edit}
+    onremove={remove}
+  />
+
+  {#if archive.length}
+    <details class="card expense-detail">
+      <summary>Korábban mentett havi fogyasztás ({archive.length})</summary>
+      <p>
+        A régi havi adatok megmaradtak. Ezekhez nem tartozik vízóraállás, ezért
+        a mérési grafikonon nem jelennek meg.
+      </p>
+      <ul class="expense-list">
+        {#each archive as item (item.month)}
+          {@const period = monthPeriod(`${item.month}-01`)}
+          <li>
+            <strong>{monthLabel(item.month)} · {fmt(item.volume, 3)} m³</strong>
+            <span
+              >{money(
+                waterBill(
+                  item.volume,
+                  period.start,
+                  period.end,
+                  data.rates,
+                  item.sewerVolume ?? item.volume,
+                ).total,
+              )} · mai díjakkal</span
+            >
+            <button
+              type="button"
+              class="text-button danger"
+              aria-label={`Havi tétel törlése: ${monthLabel(item.month)}`}
+              onclick={() => removeArchived(item.month)}>Törlés</button
+            >
+          </li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
 
   <section class="card" aria-labelledby="water-stats">
     <h2 id="water-stats">Fogyasztás érthetően</h2>
     <p class="expense-subtitle">
-      Az országos átlaghoz és hétköznapi példákhoz viszonyítjuk a legutóbbi
-      mentett hónapot.
+      Az utolsó mérési időszak napi átlagát a korábbi szokásaidhoz és az
+      országos adathoz hasonlítjuk.
     </p>
     {#if latest}
-      {@const liters = latest.volume * 1000}
-      {@const daily =
-        liters / monthDays(`${latest.month}-01`) / latest.rates.people}
+      {@const perPerson = (latest.average * 1000) / data.rates.people}
+      {@const trend = previous
+        ? percentChange(latest.average, previous.average)
+        : null}
+      {@const yearlySaving =
+        3.65 * data.rates.people * (data.rates.water + data.rates.sewer)}
       <ExpenseMetrics
         items={[
           {
             label: "Saját napi átlag fejenként",
-            value: `${fmt(daily, 0)} liter`,
+            value: `${fmt(perPerson, 0)} liter`,
           },
           {
             label: "Országos napi átlag fejenként",
-            value: `${fmt((annualAverage * 1000) / 366, 0)} liter`,
+            value: `${fmt(nationalLitersPerDay, 0)} liter`,
           },
-          {
-            label: "8 perces zuhanynak felel meg",
-            value: `kb. ${fmt(liters / 64, 0)} alkalom`,
-          },
+          ...(trend !== null
+            ? [
+                {
+                  label:
+                    "Napi fogyasztás változása az előző mérési időszakhoz képest",
+                  value: signed(trend),
+                },
+              ]
+            : []),
         ]}
       />
+      <Chart
+        id="water-benchmark"
+        kind="benchmark"
+        unit="liter/fő/nap"
+        label="A háztartás fejenkénti napi vízfogyasztása az országos átlaghoz képest."
+        bars={[
+          {
+            label: "Saját átlag",
+            short: "Saját átlag",
+            value: perPerson,
+            own: true,
+          },
+          { label: "Országos átlag", value: nationalLitersPerDay, own: false },
+        ]}
+      />
+      {#if latest.average * 1000 >= 10 * data.rates.people && yearlySaving > 0}
+        <p class="field-hint">
+          Ha fejenként napi 10 literrel kevesebb vizet használnátok, a jelenlegi
+          díjakkal évente kb. <strong>{money(yearlySaving)}</strong> maradna meg.
+          Az alapdíj változatlan.
+        </p>
+      {/if}
     {:else}<p class="empty-state">
-        A példákhoz ments el egy havi fogyasztást.
+        A saját összehasonlításhoz rögzíts legalább két vízóraállást.
       </p>{/if}
     <p class="field-hint">
       <a
         href="https://www.ksh.hu/evkonyvek/2024/magyar-statisztikai-evkonyv-2024/pdf/statevk2024_6.pdf"
         >KSH, 2024</a
-      >: 37,2 m³/fő/év. A zuhany becslése 8 liter/perc vízhozammal számol.
+      >: 37,2 m³/fő/év.
     </p>
   </section>
-
-  <section class="card" aria-labelledby="water-log">
-    <h2 id="water-log" tabindex="-1">Korábbi vízfogyasztás</h2>
-    {#if history.length}
-      <ul class="expense-list">
-        {#each history as item (item.month)}
-          <li>
-            <div>
-              <strong
-                >{monthLabel(item.month)} · {fmt(item.volume, 2)} m³</strong
-              >
-              <p>
-                {item.rates.city || "Egyedi díjak"} · {money(
-                  waterBill(item).total,
-                )}
-              </p>
-            </div>
-            <div class="expense-row-actions">
-              <button
-                class="text-button"
-                type="button"
-                aria-label={`Szerkesztés: ${monthLabel(item.month)}`}
-                onclick={() => edit(item)}>Szerkesztés</button
-              >
-              <button
-                class="text-button danger"
-                type="button"
-                aria-label={`Törlés: ${monthLabel(item.month)}`}
-                onclick={() => remove(item)}>Törlés</button
-              >
-            </div>
-          </li>
-        {/each}
-      </ul>
-    {:else}<p class="empty-state">Még nincs mentett vízfogyasztás.</p>{/if}
-  </section>
+  <WaterExamples {intervals} {now} />
 </div>

@@ -10,8 +10,9 @@
     readingId,
     rows,
     unit,
+    digits = 1,
     columns,
-    removedReadings,
+    removedReadings = 0,
     onedit,
     onremove,
     onopening,
@@ -25,15 +26,16 @@
       total: number | null;
     }[];
     unit: string;
+    digits?: number;
     columns: string[];
-    removedReadings: number;
+    removedReadings?: number;
     onedit: (
       id: string,
       field: number | "date",
       value: string,
     ) => string | void;
     onremove: (id: string) => void;
-    onopening: () => void;
+    onopening?: () => void;
   } = $props();
 
   const previewSize = 3;
@@ -87,9 +89,11 @@
         a korábban rögzített állásokat.
       </p>
     </div>
-    <button class="text-button" type="button" onclick={onopening}
-      >Évkezdő állás megadása ↗</button
-    >
+    {#if onopening}
+      <button class="text-button" type="button" onclick={onopening}
+        >Évkezdő állás megadása ↗</button
+      >
+    {/if}
   </div>
   {#if removedReadings}
     <p class="notice" role="status">
@@ -105,13 +109,16 @@
       </p>
     </div>{:else}
     <div class="chart-heading">
-      <span>Összesített mért fogyasztás</span><span>{fmt(total)} {unit}</span>
+      <span>Összesített mért fogyasztás</span><span
+        >{fmt(total, digits)} {unit}</span
+      >
     </div>
     <Chart
       id={`${id}-chart`}
       {unit}
+      {digits}
       readings={chartData}
-      label={`Mért fogyasztás: ${fmt(total)} ${unit}, ${chartData.length} mérés alapján.`}
+      label={`Mért fogyasztás: ${fmt(total, digits)} ${unit}, ${chartData.length} mérés alapján.`}
     />
     <p class="field-hint">
       A pontok mérések, a köztük húzott vonal szemléltetés.
@@ -174,7 +181,7 @@
                   >Fogyasztás · {unit}</span
                 >
                 {previous && row.total !== null && previous.total !== null
-                  ? `+${fmt(row.total - previous.total)}`
+                  ? `+${fmt(row.total - previous.total, digits)}`
                   : "—"}<small
                   >{previous
                     ? `${days(previous.date, row.date)} nap alatt`

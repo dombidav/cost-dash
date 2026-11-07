@@ -6,6 +6,8 @@
     id,
     kind = "consumption",
     unit = "m³",
+    digits = 1,
+    minimumDigits,
     readings = [],
     bars = [],
     label,
@@ -13,6 +15,8 @@
     id: string;
     kind?: "consumption" | "benchmark";
     unit?: string;
+    digits?: number;
+    minimumDigits?: number;
     readings?: Reading[];
     bars?: { label: string; value: number; own: boolean; short?: string }[];
     label: string;
@@ -41,15 +45,22 @@
       currentBars = bars,
       target = canvas,
       currentKind = kind,
-      currentUnit = unit;
+      currentUnit = unit,
+      currentDigits = digits;
     let stopped = false,
       destroy: (() => void) | undefined;
     void import("../charts")
       .then((charts) => {
         if (stopped) return;
         if (currentKind === "consumption")
-          charts.drawConsumption(target, currentReadings, currentUnit);
-        else charts.drawBenchmark(target, currentBars, currentUnit);
+          charts.drawConsumption(
+            target,
+            currentReadings,
+            currentUnit,
+            currentDigits,
+          );
+        else
+          charts.drawBenchmark(target, currentBars, currentUnit, currentDigits);
         destroy = () => charts.clear(id);
       })
       .catch(() => {
@@ -81,12 +92,19 @@
       <ul>
         {#if kind === "benchmark"}
           {#each bars as bar, index (index)}
-            <li>{bar.label} · {fmt(bar.value)} {unit}</li>
+            <li>
+              {bar.label} · {fmt(bar.value, digits, minimumDigits)}
+              {unit}
+            </li>
           {/each}
         {:else}
           {#each readings as reading (reading.id)}
             <li>
-              {reading.date} · {fmt(reading.value - readings[0].value)}
+              {reading.date} · {fmt(
+                reading.value - readings[0].value,
+                digits,
+                minimumDigits,
+              )}
               {unit}
             </li>
           {/each}

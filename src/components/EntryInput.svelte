@@ -13,6 +13,7 @@
     max,
     placeholder,
     required = false,
+    format,
   }: {
     id: string;
     label: string;
@@ -24,7 +25,9 @@
     max?: string;
     placeholder?: string;
     required?: boolean;
+    format?: (value: string) => string;
   } = $props();
+  let typing = $state(false);
 </script>
 
 <div class="field">
@@ -35,7 +38,14 @@
   <input
     {id}
     {type}
-    bind:value
+    bind:value={
+      () => (format && !typing ? format(value) : value),
+      (input) => {
+        if (format) typing = true;
+        value = input;
+      }
+    }
+    onblur={() => (typing = false)}
     {inputmode}
     {min}
     {max}

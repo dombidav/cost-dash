@@ -132,11 +132,19 @@
         question: "Mit tegyek, ha a településem nincs a listán?",
         answer:
           "Válaszd az Egyedi díjak lehetőséget, és add meg a számládon szereplő bruttó díjakat. Az alapdíjat külön írd be.",
+        link: { href: "#water-settings", label: "Település és vízdíjak" },
       },
       {
         question: "Mit adjak meg, ha nincs csatornadíjam?",
         answer:
-          "Írj nullát a csatornadíj mezőbe. Ha csak a csatornázott mennyiség tér el, add meg külön a számlán szereplő mennyiséget.",
+          "Írj nullát a csatornadíj mezőbe. A becslés egyébként a teljes mért fogyasztásra számol csatornadíjat.",
+        link: { href: "#water-settings", label: "Település és vízdíjak" },
+      },
+      {
+        question: "Miért kell két vízóraállás?",
+        answer:
+          "A mérő az összes korábban átfolyt vizet mutatja. A két leolvasott érték különbségéből derül ki, mennyi fogyott a két nap között.",
+        link: { href: "#water-reading", label: "Vízóraállás rögzítése" },
       },
     ],
   };

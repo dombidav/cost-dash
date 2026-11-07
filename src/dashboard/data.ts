@@ -1,6 +1,6 @@
 import { days, monthPeriod, sortByDate, today } from "../calendar";
 import { allowanceBetween, calculateBilling } from "../calculator";
-import { CAR_KEY, validCar } from "../car/state";
+import { CAR_KEY, migrateCar, validCar } from "../car/state";
 import {
   cost,
   measured,
@@ -17,7 +17,13 @@ import {
   SUBSCRIPTIONS_KEY,
   validSubscriptions,
 } from "../subscriptions/state";
-import { validWater, waterBill, WATER_KEY } from "../water/state";
+import {
+  estimateWaterMonth,
+  migrateWater,
+  validWater,
+  waterIntervals,
+  WATER_KEY,
+} from "../water/state";
 import type { ElectricityPoint } from "../electricity/types";
 import type { AppState } from "../types";
 
@@ -53,8 +59,8 @@ export function readSources() {
   return {
     gas: read("gas", validGas, migrateGas),
     electricity: read("electricity", validState, migrateState),
-    water: read("water", validWater),
-    car: read("car", validCar),
+    water: read("water", validWater, migrateWater),
+    car: read("car", validCar, migrateCar),
     subscriptions: read("subscriptions", validSubscriptions),
     errors,
   };
@@ -192,12 +198,12 @@ export function reports(
 ): MonthReport[] {
   const current = now.slice(0, 7);
   const count = year === Number(now.slice(0, 4)) ? Number(now.slice(5, 7)) : 12;
+  const waterUsage = waterIntervals(sources.water?.readings ?? []);
+  const carEntries = sources.car?.cars.flatMap((car) => car.entries) ?? [];
   return Array.from({ length: count }, (_, index) => {
     const month = `${year}-${String(index + 1).padStart(2, "0")}`;
     const { start, end } = monthPeriod(`${month}-01`);
-    const water = sources.water?.months.find((item) => item.month === month);
-    const car =
-      sources.car?.entries.filter((item) => item.date.startsWith(month)) ?? [];
+    const car = carEntries.filter((item) => item.date.startsWith(month));
     const recurring =
       sources.subscriptions?.filter((item) => activeIn(item, month)) ?? [];
     const costs: MonthReport["costs"] = {
@@ -212,7 +218,9 @@ export function reports(
             month === current,
           )
         : missing,
-      water: water ? { value: waterBill(water).total } : missing,
+      water: sources.water
+        ? (estimateWaterMonth(sources.water, waterUsage, start, end) ?? missing)
+        : missing,
       car: { value: sumKnown(car.map((item) => item.paid)) },
       subscriptions: { value: sumKnown(recurring.map((item) => item.fee)) },
     };
@@ -235,7 +243,10 @@ export function reportYears(sources: Sources, now = today()) {
       ...point.readings.map((item) => item.date),
     ]) ?? []),
     ...(sources.water?.months.map((item) => item.month) ?? []),
-    ...(sources.car?.entries.map((item) => item.date) ?? []),
+    ...(sources.water?.readings.map((item) => item.date) ?? []),
+    ...(sources.car?.cars.flatMap((car) =>
+      car.entries.map((item) => item.date),
+    ) ?? []),
     ...(sources.subscriptions?.map((item) => item.start) ?? []),
   ];
   const earliest = dates.reduce(

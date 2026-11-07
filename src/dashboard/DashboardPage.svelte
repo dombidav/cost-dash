@@ -212,7 +212,9 @@
                 : item.id === "car"
                   ? "Rögzített kifizetés"
                   : "Ütemezett havidíj"}{item.partial
-                ? " · Hiányos mérőadat"
+                ? item.id === "water"
+                  ? " · Részleges havi lefedettség"
+                  : " · Hiányos mérőadat"
                 : ""}{selected.length > 1
                 ? ` · ${item.known}/${selected.length} hónap`
                 : ""}
@@ -228,18 +230,23 @@
       {/each}
     </ul>
     <p class="field-hint">
-      Az üres hónapokhoz nincs adat. Az áram- és gázösszeg a jelenlegi
-      beállításokkal és havi kedvezményes sávokkal készült becslés. Az autó
-      értékvesztése külön marad.
+      Az üres hónapokhoz nincs adat. A víz, a gáz és az áram összege a jelenlegi
+      beállításokkal készült becslés. Az autó értékvesztése külön marad.
     </p>
     <details class="expense-detail">
-      <summary>Hogyan számoljuk az energiaösszegeket?</summary>
+      <summary>Hogyan számoljuk a közműdíjakat?</summary>
       <p>
         Teljes hónapot lefedő mérőállásoknál a két leolvasás közötti fogyasztást
         időarányosan osztjuk el. Számíthat a hónappal pontosan egyező megadott
         időszak, az aktuális hónapra pedig az éves fogyasztásból becsült
         részszámla is. Ha több villanyórából csak egy részükre van kiszámítható
         összeg, a kategória ezt külön jelzi.
+      </p>
+      <p>
+        Víznél csak a leolvasásokkal lefedett napokra becsülünk díjat. Ha erre a
+        hónapra korábban teljes havi fogyasztást mentettél, azt használjuk, amíg
+        a leolvasások nem fedik le az egész hónapot. Ugyanazt a fogyasztást csak
+        egyszer számoljuk.
       </p>
     </details>
   </section>

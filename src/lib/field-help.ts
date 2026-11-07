@@ -95,6 +95,34 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
   "gas-benchmark-region": region,
   "gas-saving": saving,
   "electricity-year": year,
+  "car-select": help(
+    "A kiválasztott autó kiadásait, kilométeróra-állásait és statisztikáit látod.",
+    "A listában az általad megadott név vagy rendszám alapján választhatsz.",
+  ),
+  "water-example": help(
+    "A köbméterben mért vízfogyasztást hétköznapi mennyiségekhez hasonlítja.",
+    "Válassz a példák közül. A számítás alapját az eredmény alatt találod.",
+  ),
+  "car-example": help(
+    "Az elmúlt 30 nap tankolásaihoz megadott kilométereket hasonlítja össze más közlekedési módokkal vagy sporttávokkal.",
+    "Válassz egy példát. A számítás alapját az eredmény alatt találod.",
+  ),
+  "car-bus-distance": help(
+    "Egy feltételezett egyirányú helyközi buszút hossza. Ez adja a jegyár alapját.",
+    "Válaszd a szokásos egyirányú utadhoz legközelebb álló távot.",
+  ),
+  "car-bus-passengers": help(
+    "Ennyi utasra számoljuk a teljes árú jegyeket.",
+    "Add meg, hányan utaznátok együtt.",
+  ),
+  "car-tax-year": help(
+    "Az év, amelyre a teljes éves adót kiszámoljuk. Az adómérték évente változhat.",
+    "A NAV-határozaton szereplő adóévet válaszd, vagy azt az évet, amelyre tervezel.",
+  ),
+  "car-tax-class": help(
+    "A tisztán elektromos (5E) és nulla emissziós (5Z) autók adómentesek. Egyes 5P és 5N járművekre átmeneti mentesség vonatkozhat.",
+    "A forgalmi engedély V.9 mezőjében keresd a kódot. Az 5P és 5N opciónál ellenőrizd a forgalomba helyezés vagy nyilvántartásba vétel dátumát is.",
+  ),
   "electricity-point-select": help(
     "A mérési pont, amelynek a beállításait, naplóját és statisztikáit szerkeszted. A többi pont adatai megmaradnak, a közös összesítőben együtt láthatók.",
     "A számla mérési pontjai és tarifái alapján különítsd el például a nappali, a vezérelt és a H pontot. Ugyanannak a mérőnek az A2-regiszterei egy pontba tartoznak.",
@@ -245,6 +273,13 @@ export function fieldHelp(id: string): FieldHelp {
     );
   if (id.startsWith("gas-history-"))
     return id.endsWith("-date") ? readingDate : gasReading;
+  if (id.startsWith("water-history-"))
+    return id.endsWith("-date")
+      ? readingDate
+      : help(
+          "A vízóra teljes állása köbméterben. A két állás különbsége adja a fogyasztást.",
+          "A vízóra számlálóján vagy a szolgáltató számlájának mérőállásai között.",
+        );
   if (id.startsWith("electricity-history-"))
     return id.endsWith("-date")
       ? readingDate

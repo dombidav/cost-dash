@@ -30,8 +30,8 @@ Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm 
 
 ## Használat
 
-- **Víz:** havi fogyasztás × ivóvízdíj + csatornamennyiség × csatornadíj + havi alapdíj. A megadott 2026-os CSV egységárai szerkeszthetők, az alapdíj külön adható meg. A napló minden hónaphoz megőrzi az akkor megadott díjakat.
-- **Autó:** a fizetett összegek a fizetés dátumára kerülnek. Összesített l/100 km = 100 × összes liter / összes kilométer, csak a tele tankolások közötti megjelölt utakra. Ha csak literár ismert, liter = fizetett összeg / literár. A futáshoz köthető becsült értékvesztés külön szerepel.
+- **Víz:** a fogyasztás két dátumozott vízóraállás különbsége. A település, a bruttó egységárak és a havi alapdíj egy helyen állíthatók; az összes becslés a jelenlegi díjakat használja. Az alapdíj naparányos. A korábbi havi tételek megmaradnak, külön a mérési naplótól. A Dashboard a hónapokat átfedő méréseket egyenletes napi fogyasztást feltételezve osztja szét.
+- **Autó:** minden autóhoz egyedi nevet vagy rendszámot és külön naplót adhatsz. A Dashboard az autók kiadásait összeadja. A fizetett összegek a fizetés dátumára kerülnek. Kilométeróra-állás tankoláshoz és egyszeri kiadáshoz is menthető. Ha az előző tankolásnak van óraállása, a megtett út és az új óraállás egymásból frissül. Összesített l/100 km = 100 × összes liter / összes kilométer, csak a tele tankolások közötti megjelölt utakra. Ha csak literár ismert, liter = fizetett összeg / literár. A futáshoz köthető becsült értékvesztés külön szerepel.
 - **Havidíjak:** a tétel az első és az utolsó megadott hónapban is esedékes. Díjemeléskor a lezárt régi és az új áras tétel külön őrzi meg az időszakokat.
 - **Dashboard:** az ismert tételeket adja össze naptári hónaponként és évenként; a folyó év az aktuális hónapig látható. A gáz- és áramdíjak a hónapot lefedő mérések, az egyező időszaki adatok vagy az aktuális havi részszámla alapján becsültek. A kategóriák becslései és rögzített kifizetései eltérő jelölést kapnak.
 

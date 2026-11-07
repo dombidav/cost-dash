@@ -30,7 +30,8 @@ Chart.defaults.font.family = "Inter, Segoe UI, Arial, sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.animation = false;
 const plots = new Map<string, Chart>();
-const volume = new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 1 });
+const amountFormat = (maximumFractionDigits: number) =>
+  new Intl.NumberFormat("hu-HU", { maximumFractionDigits });
 const day = new Intl.DateTimeFormat("hu-HU", {
   timeZone: "UTC",
   month: "short",
@@ -45,10 +46,12 @@ export function drawConsumption(
   canvas: HTMLCanvasElement,
   readings: Reading[],
   unit = "m³",
+  digits = 1,
 ) {
   clear(canvas.id);
   if (!readings.length) return;
   const first = readings[0];
+  const volume = amountFormat(digits);
   const accent =
     getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#ff9189";
   const chart = new Chart(canvas, {
@@ -118,8 +121,10 @@ export function drawBenchmark(
   canvas: HTMLCanvasElement,
   bars: { label: string; value: number; own: boolean; short?: string }[],
   unit = "m³",
+  digits = 1,
 ) {
   clear(canvas.id);
+  const volume = amountFormat(digits);
   const accent =
     getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#ff9189";
   const chart = new Chart(canvas, {

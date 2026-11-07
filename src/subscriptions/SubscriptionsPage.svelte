@@ -1,10 +1,12 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import Chart from "../components/Chart.svelte";
   import EntryInput from "../components/EntryInput.svelte";
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
+  import PageIntro from "../components/PageIntro.svelte";
   import { parseNumber, today } from "../calendar";
   import { money, uid } from "../lib/format";
-  import { monthLabel } from "../lib/months";
+  import { monthLabel, shiftMonth } from "../lib/months";
   import { storage } from "../lib/storage.svelte";
   import { toast } from "../lib/ui.svelte";
   import {
@@ -39,6 +41,18 @@
   );
   let monthly = $derived(active.reduce((sum, item) => sum + item.fee, 0));
   let annual = $derived(monthly * 12);
+  const nextMonths = Array.from({ length: 3 }, (_, index) =>
+    shiftMonth(month, index + 1),
+  );
+  let forecast = $derived(
+    nextMonths.map((month) => ({
+      month,
+      value: rows.reduce(
+        (total, item) => (activeIn(item, month) ? total + item.fee : total),
+        0,
+      ),
+    })),
+  );
 
   function reset() {
     name = fee = end = editing = error = "";
@@ -93,14 +107,11 @@
 
 <svelte:window onstorage={disk.onStorage} />
 <div class="expense-page">
-  <div class="expense-intro">
-    <span class="eyebrow">HAVIDÍJAK · RENDSZERES KIADÁSOK</span>
-    <h1>Havidíjak</h1>
-    <p>
-      Vedd fel egyszer a telefont, az internetet vagy a szemétdíjat. Az oldal
-      minden érintett hónapban számol velük.
-    </p>
-  </div>
+  <PageIntro
+    eyebrow="HAVIDÍJAK, EGY HELYEN"
+    title="Tudd, mi jön minden hónapban"
+    description="A telefon, az internet és a többi rendszeres díj együtt mutatja meg, mire számíthatsz."
+  />
   {#if disk.warning}<p class="notice danger" role="alert">
       {disk.warning}
     </p>{/if}
@@ -198,6 +209,50 @@
           >{/if}
       </div>
     </form>
+  </section>
+
+  <section class="card" aria-labelledby="subscription-forecast">
+    <h2 id="subscription-forecast">Mi várható a következő hónapokban?</h2>
+    <p class="expense-subtitle">
+      A már megadott kezdések és lejáratok alapján, a következő hónaptól
+      számolva.
+    </p>
+    {#if monthly || forecast.some((item) => item.value > 0)}
+      <ExpenseMetrics
+        items={[
+          { label: "Következő hónap", value: money(forecast[0].value) },
+          {
+            label: "Ha a mostani havidíj 12 hónapig változatlan lenne",
+            value: money(annual),
+          },
+        ]}
+      />
+      <Chart
+        id="subscription-forecast-chart"
+        kind="benchmark"
+        unit="Ft"
+        digits={0}
+        label="A jelenlegi hónap és a következő három hónap ütemezett havidíjai."
+        bars={[
+          {
+            label: "Ez a hónap",
+            short: "Ez a hónap",
+            value: monthly,
+            own: true,
+          },
+          ...forecast.map((item) => ({
+            label: monthLabel(item.month),
+            value: item.value,
+            own: false,
+          })),
+        ]}
+      />
+    {:else}
+      <p class="empty-state">
+        Az előrejelzéshez adj hozzá egy mostani vagy a következő három hónapban
+        esedékes havidíjat.
+      </p>
+    {/if}
   </section>
 
   {#snippet list(items: Subscription[])}
