@@ -82,7 +82,7 @@ export function baseBetween(start: string, end: string, annualBase: number) {
   }
   return base;
 }
-function cost(
+export function gasCost(
   volume: number | null,
   allowanceMJ: number,
   settings: Settings,
@@ -161,7 +161,7 @@ export function calculateStatistics(
     : null;
   const yearChange =
     prior && tracked ? percentChange(tracked.average, prior.average) : null;
-  const billingCost = cost(
+  const billingCost = gasCost(
     bill.consumption,
     bill.allowanceMJ,
     settings,
@@ -169,7 +169,7 @@ export function calculateStatistics(
     baseBetween(billing.start, billing.end, stats.annualBase),
   );
   const latestCost = latest
-    ? cost(
+    ? gasCost(
         latest.volume,
         allowanceBetween(latest.start, latest.end, billing.mode),
         settings,
@@ -177,7 +177,7 @@ export function calculateStatistics(
         baseBetween(latest.start, latest.end, stats.annualBase),
       )
     : null;
-  const annualCost = cost(
+  const annualCost = gasCost(
     annualVolume,
     ANNUAL_MJ,
     settings,
@@ -188,7 +188,7 @@ export function calculateStatistics(
     annualVolume === null
       ? null
       : annualVolume * (1 - stats.savingPercent / 100);
-  const reducedCost = cost(
+  const reducedCost = gasCost(
     reducedVolume,
     ANNUAL_MJ,
     settings,

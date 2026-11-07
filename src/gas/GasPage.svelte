@@ -12,7 +12,7 @@
   import { storage } from "../lib/storage.svelte";
   import { trimReadings } from "../lib/reading-limit";
   import { openingExplanation } from "../lib/seasonal-consumption";
-  import { initialGas, validGas, migrateGas } from "./state";
+  import { GAS_STORAGE_KEY, initialGas, validGas, migrateGas } from "./state";
   import { fmt, uid } from "../lib/format";
   import { toast } from "../lib/ui.svelte";
   import type {
@@ -28,8 +28,7 @@
   import Gauge from "../components/Gauge.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
   import GasStats from "./GasStats.svelte";
-  const key = "rezsi-calculator.v1",
-    disk = storage(key, initialGas, validGas, migrateGas);
+  const disk = storage(GAS_STORAGE_KEY, initialGas, validGas, migrateGas);
   const initialRemoved = limitReadings(disk.data);
   if (initialRemoved) disk.save(disk.data);
   let removedReadings = $state(initialRemoved);

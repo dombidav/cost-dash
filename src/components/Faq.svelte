@@ -91,6 +91,18 @@
   const questions: Record<PageId, Question[]> = {
     electricity: electricityQuestions,
     gas: gasQuestions,
+    dashboard: [
+      {
+        question: "Miért hiányzik egy összeg?",
+        answer:
+          "Az összesítő a böngésződben rögzített tételekből és a rendelkezésre álló energiaadatokból számol. A kategória linkje a megfelelő rögzítőoldalra visz.",
+      },
+      {
+        question: "A becslés megegyezik a számlámmal?",
+        answer:
+          "A szolgáltató egyedi elszámolása, az időközben változó tarifák és a jóváírások miatt eltérhet a számládtól.",
+      },
+    ],
     subscriptions: [
       {
         question: "Mi történik, ha megszűnik egy előfizetés?",

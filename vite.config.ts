@@ -16,6 +16,7 @@ export default defineConfig({
         electricity: fileURLToPath(new URL("./aram.html", import.meta.url)),
         water: fileURLToPath(new URL("./viz.html", import.meta.url)),
         car: fileURLToPath(new URL("./auto.html", import.meta.url)),
+        dashboard: fileURLToPath(new URL("./dashboard.html", import.meta.url)),
         subscriptions: fileURLToPath(
           new URL("./havidijak.html", import.meta.url),
         ),

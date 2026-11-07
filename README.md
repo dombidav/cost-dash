@@ -22,11 +22,20 @@ npm run preview
 
 A `dist/` teljes tartalma statikus HTTP-tárhelyre tölthető fel. Az `index.html` a gáz-, az `aram.html` az áramoldal; relatív assetutakkal alkönyvtárban is működnek. Nincs szerveroldali futtatás, API vagy SPA-átirányítási követelmény. A közvetlen `file://` megnyitás már nem támogatott. A preview alapértelmezett címe http://127.0.0.1:4173. A localStorage címhez és porthoz kötött: a korábbi 4173-as adatok ezen a preview-címen érhetők el, az 5173-as fejlesztői cím külön tárhely.
 
-A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-számításokat, a `vite.config.ts` a buildet állítja be. Szigorú TypeScript-típusellenőrzés, Terser-tömörítés három optimalizálási menettel, névrövidítéssel és megjegyzéseltávolítással; tömörített CSS, production sourcemap nélkül. A Chart.js csak a használt elemekkel, külön chunkban töltődik be, amikor grafikon közelébe görgetsz. A `.gitignore` kizárja a függőségeket, buildet, helyi környezeti és ideiglenes fájlokat.
+A további statikus oldalak: `viz.html`, `auto.html`, `havidijak.html` és `dashboard.html`. Mindegyik ugyanazon a címen futtatva ugyanazt a helyi böngészőtárhelyet éri el.
+
+A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-számításokat, a `vite.config.ts` a buildet állítja be. Szigorú TypeScript-típusellenőrzés, Terser-tömörítés három optimalizálási menettel, névrövidítéssel és megjegyzéseltávolítással; tömörített CSS, production sourcemap nélkül. A Chart.js a grafikonokhoz szükséges elemekkel, külön chunkban töltődik be. A `.gitignore` kizárja a függőségeket, buildet, helyi környezeti és ideiglenes fájlokat.
 
 Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja.
 
 ## Használat
+
+- **Víz:** havi fogyasztás × ivóvízdíj + csatornamennyiség × csatornadíj + havi alapdíj. A megadott 2026-os CSV egységárai szerkeszthetők, az alapdíj külön adható meg. A napló minden hónaphoz megőrzi az akkor megadott díjakat.
+- **Autó:** a fizetett összegek a fizetés dátumára kerülnek. Összesített l/100 km = 100 × összes liter / összes kilométer, csak a tele tankolások közötti megjelölt utakra. Ha csak literár ismert, liter = fizetett összeg / literár. A futáshoz köthető becsült értékvesztés külön szerepel.
+- **Havidíjak:** a tétel az első és az utolsó megadott hónapban is esedékes. Díjemeléskor a lezárt régi és az új áras tétel külön őrzi meg az időszakokat.
+- **Dashboard:** az ismert tételeket adja össze naptári hónaponként és évenként; a folyó év az aktuális hónapig látható. A gáz- és áramdíjak a hónapot lefedő mérések, az egyező időszaki adatok vagy az aktuális havi részszámla alapján becsültek. A kategóriák becslései és rögzített kifizetései eltérő jelölést kapnak.
+
+### Gáz
 
 - Állítsd be a számlán szereplő fűtőértéket és korrekciós tényezőt. A mező elhagyásakor mentődnek, a számítás azonnal frissül.
 - Válassz számlázási módot: egyenletes részszámlázás, havi diktálás vagy hőmérsékletfüggő részszámlázás. A választás helyben mentődik; az MVM-nél nem módosít beállítást.

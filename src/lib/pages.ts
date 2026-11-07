@@ -31,7 +31,15 @@ export const categories = {
   },
 } as const;
 
-export const pages = categories;
+export const pages = {
+  dashboard: {
+    label: "Dashboard",
+    title: "Kiadási áttekintő",
+    href: "./dashboard.html",
+    icon: "▦",
+  },
+  ...categories,
+} as const;
 export type PageId = keyof typeof pages;
 
 export function currentPage(path: string): PageId {

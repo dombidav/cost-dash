@@ -6,6 +6,8 @@ import {
 import { today, validDate, yearFor } from "../calendar";
 import { defaultStatistics, validateStatistics } from "../statistics";
 import type { AppState } from "../types";
+export const GAS_STORAGE_KEY = "rezsi-calculator.v1";
+
 export function initialGas(): AppState {
   return {
     version: 1,

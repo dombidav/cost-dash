@@ -1,15 +1,21 @@
+:root {
+  --category-water: #89caff;
+  --category-car: #ffb46e;
+  --category-subscriptions: #80e6ba;
+}
+
 body[data-energy="water"] {
-  --accent: #89caff;
+  --accent: var(--category-water);
   --accent-rgb: 137 202 255;
 }
 
 body[data-energy="car"] {
-  --accent: #ffb46e;
+  --accent: var(--category-car);
   --accent-rgb: 255 180 110;
 }
 
 body[data-energy="subscriptions"] {
-  --accent: #80e6ba;
+  --accent: var(--category-subscriptions);
   --accent-rgb: 128 230 186;
 }
 
@@ -41,7 +47,27 @@ body[data-energy="subscriptions"] {
 
 .energy-nav a {
   min-width: 0;
+  flex: 1 0 auto;
+  padding-inline: clamp(8px, 2vw, 16px);
   justify-content: center;
+}
+
+@media (max-width: 560px) {
+  .energy-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .energy-nav a {
+    gap: 5px;
+    padding-inline: 4px;
+  }
+}
+
+body[data-energy="dashboard"] {
+  --accent: #d3bdff;
+  --accent-rgb: 211 189 255;
 }
 
 .brand-mark text {
@@ -50,9 +76,14 @@ body[data-energy="subscriptions"] {
 
 .expense-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(14px, 2vw, 22px);
   min-width: 0;
   padding-top: clamp(16px, 3vw, 32px);
+}
+
+.expense-page > .card {
+  min-width: 0;
 }
 
 .expense-intro h1 {
