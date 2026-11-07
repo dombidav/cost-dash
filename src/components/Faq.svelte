@@ -38,7 +38,7 @@
     {
       question: "Milyen időszakot mutat az éves összesítő?",
       answer:
-        "A kiválasztott kedvezményes évet mutatja augusztus 1-jétől a következő július végéig. A teljes időszak követéséhez rögzíts egy állást a kezdőnapra is.",
+        "A kiválasztott kedvezményes évet mutatja augusztus 1-jétől a következő július végéig. Ha nincs kezdőnapi mérésed, a hiányzó fogyasztást havi súlyozással becsüljük, amint van hozzá elég adat.",
     },
   ];
 

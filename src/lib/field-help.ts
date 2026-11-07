@@ -117,6 +117,10 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
     "Ennek az egy mérési pontnak a várható teljes éves hálózati vételezése kWh-ban. Az A2 két zónáját együtt add meg; más mérő fogyasztását ne add hozzá.",
     "Az éves elszámolószámlán, az online ügyfélszolgálat éves fogyasztásánál vagy saját teljes éves mérésből. Az induló 2500 kWh/év a KSH háztartási átlagának kerekítése, nem saját mérés. Külön B/H-mérőnél írd át a saját mennyiségre; napelemnél a hálózati vételezés kell.",
   ),
+  "electricity-consumption-profile": help(
+    "A kiválasztott mérő fogyasztásának feltételezett havi eloszlása. A hiányzó évkezdet és a várható éves fogyasztás becslését befolyásolja.",
+    "A korábbi havi számlákon vagy saját mérőállásaidból nézd meg, nyáron, télen vagy nagyjából egyformán használod-e ezt a mérőt.",
+  ),
   "electricity-low": help(
     "Az alap kedvezményes bruttó kWh-díj. A2-nél a csúcsidő, H-nál a fűtési idény díja. Már tartalmazza az áfát és a kWh-alapú rendszerhasználatot.",
     "A számla megfelelő árszabású díjsoraiból vagy az elosztói területhez tartozó MVM-díjtáblából. A külön feltüntetett nettó energiadíj önmagában nem ez az összeg.",

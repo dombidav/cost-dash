@@ -27,6 +27,7 @@
   import { fmt, money, uid } from "../lib/format";
   import { storage } from "../lib/storage.svelte";
   import { trimReadings } from "../lib/reading-limit";
+  import { openingExplanation } from "../lib/seasonal-consumption";
   import { toast } from "../lib/ui.svelte";
   import type {
     ElectricityPoint,
@@ -154,6 +155,9 @@
         break;
       case "annualEstimate":
         p.annualEstimate = raw.trim();
+        break;
+      case "consumptionProfile":
+        p.consumptionProfile = raw as ElectricityPoint["consumptionProfile"];
         break;
       case "low":
         p.rates.low = parseNumber(raw);
@@ -514,17 +518,19 @@
             ? "KORLÁTMENTES TARIFA"
             : yearly.complete
               ? "KEZDŐÁLLÁSTÓL KÖVETVE"
-              : "HIÁNYOS MÉRÉSI IDŐSZAK"}</span
+              : yearly.opening
+                ? "ÉVKEZDET BECSÜLVE"
+                : "HIÁNYOS MÉRÉSI IDŐSZAK"}</span
         >
       </div>
       <div class="balance-main">
         <div class="balance-copy">
           <p class="muted">
-            {point.tariff === "H"
-              ? "Hátralévő normál keret · H-idényen felül"
-              : yearly.complete
-                ? "Hátralévő kedvezményes mennyiség"
-                : "Becsült maradék · legfeljebb"}
+            {point.tariff === "B_GEO"
+              ? "Korlátlan kedvezményes fogyasztás"
+              : yearly.remainingEstimated
+                ? "Becsült hátralévő keret"
+                : "Hátralévő kedvezményes keret"}
           </p>
           <div class="big-number">
             <span>{point.tariff === "B_GEO" ? "∞" : fmt(yearly.remaining)}</span
@@ -555,7 +561,7 @@
       <div class="balance-stats">
         <div>
           <span>Mért összfogyasztás</span><strong
-            >{fmt(yearly.tracked?.volume ?? (yearly.complete ? 0 : null))}
+            >{fmt(yearly.measuredVolume)}
             <small>kWh</small></strong
           >
         </div>
@@ -565,18 +571,37 @@
             <small>kWh</small></strong
           >
         </div>
-        <div>
-          <span>Éves adat / becslés</span><strong
-            >{fmt(yearly.volume)} <small>kWh</small></strong
-          >
-        </div>
+        {#if yearly.opening}
+          <div>
+            <span>Becsült hiányzó fogyasztás</span><strong
+              >{fmt(yearly.opening.volume)} <small>kWh</small></strong
+            >
+          </div>
+        {:else}
+          <div>
+            <span
+              >{yearly.measuredFull
+                ? "Mért éves fogyasztás"
+                : "Becsült éves fogyasztás"}</span
+            ><strong>{fmt(yearly.volume)} <small>kWh</small></strong>
+          </div>
+        {/if}
       </div>
       <p class="balance-note">
         {yearly.active === 0
           ? "Ebben a kedvezményes évben nincs megadott jogosult nap."
           : !yearly.first
             ? `A pontos követéshez ${yearly.activeStart}-i kezdőállás szükséges.`
-            : `Követés: ${yearly.first.date} → ${yearly.last!.date}. ${yearly.complete ? "A maradék az utolsó mérésre vonatkozik." : "A kezdőállás előtti fogyasztást nem ismerjük; a maradék felső becslés."}`}
+            : yearly.complete
+              ? `Követett időszak: ${yearly.first.date} → ${yearly.last!.date}.`
+              : openingExplanation(
+                  yearly.opening,
+                  yearly.start !== yearly.activeStart,
+                )}
+        {#if yearly.remaining !== null}A keret az utolsó mérésre ({yearly.last
+            ?.date}) vonatkozik.{/if}
+        {#if yearly.seasonSplitEstimated}Az idényhatárt átfogó mért fogyasztást
+          naparányosan osztottuk meg.{/if}
       </p>
     </section>
     <section class="card reading-card" id="electricity-new-reading">

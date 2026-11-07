@@ -104,7 +104,6 @@
   );
   let headroom = $derived(
     point.tariff !== "B_GEO" &&
-      yearly.complete &&
       yearly.remainingDays > 0 &&
       yearly.remaining !== null
       ? yearly.remaining / yearly.remainingDays
@@ -133,7 +132,7 @@
   const basis = {
     missing: "KEVÉS ADAT",
     measured: "TELJES MÉRT IDŐSZAK",
-    linear: "LINEÁRIS ÉVES BECSLÉS",
+    seasonal: "SZEZONÁLIS BECSLÉS",
     manual: "MEGADOTT ÉVES BECSLÉS",
   };
   function update(key: keyof ElectricityState["stats"], raw: string) {
@@ -239,13 +238,13 @@
       <p class="stat-description">
         {yearly.kind === "measured"
           ? "A jogosult éves időszak pontos nyitó és záró állásából."
-          : yearly.kind === "linear"
-            ? `Legalább 30 nap napi átlagát vetítjük a jogosult év ${yearly.active} napjára. A használat évszakosan változhat, ezért ez becslés.`
+          : yearly.kind === "seasonal"
+            ? yearly.last?.date === yearly.activeEnd
+              ? "A mért fogyasztás és a havi súlyozással becsült évkezdő rész együtt."
+              : "A mért szakasz fogyasztását a havi profil alapján vetítjük ki a jogosult időszakra."
             : yearly.kind === "manual"
-              ? "A megadott éves becslésből, a jogosult napokra arányosítva."
-              : point.tariff === "H"
-                ? "Adj meg éves becslést, vagy rögzíts nyitó és záró állást a teljes évre."
-                : "Legalább 30 nap mérés vagy megadott éves becslés kell."}
+              ? "Az éves fogyasztási beállításból, havi súlyozással a jogosult időszakra."
+              : "Éves fogyasztási becslés vagy hosszabb mért időszak szükséges."}
         {#if point.tariff === "H" && yearly.kind === "manual"}
           A fűtési idényre a beállított fogyasztási aránnyal számolunk.
         {/if}
@@ -264,15 +263,18 @@
           <span>{fmt(headroom, 2)}</span><small>kWh/nap</small>
         </div>
         <p class="stat-description">
-          {!yearly.complete
-            ? `A napi mozgástérhez ${yearly.activeStart}-i kezdőállás kell.`
+          {yearly.remaining === null
+            ? "Mérőállás vagy becsülhető kezdőszakasz szükséges."
             : yearly.remainingDays === 0
-              ? "Nincs hátralévő nap ebben a lemért jogosultsági időszakban."
-              : `${fmt(yearly.remaining)} kWh normál keret és ${yearly.remainingDays} nap maradt az utolsó méréskor.`}
+              ? "A jogosultsági időszak véget ért."
+              : `${fmt(yearly.remaining)} kWh ${yearly.remainingEstimated ? "becsült keret" : "keret"} és ${yearly.remainingDays} nap maradt az utolsó méréskor.`}
         </p>
         <p class="stat-footnote">
           {#if point.tariff === "H"}A fűtési idény fogyasztása nem csökkenti ezt
             a keretet.{/if}
+          {#if yearly.opening}Az évkezdetkor hiányzó fogyasztást havi
+            súlyozással becsültük.{:else if yearly.seasonSplitEstimated}Az
+            idényhatárt átfogó fogyasztást naparányosan osztottuk meg.{/if}
           A legutóbbi mérés óta eltelt fogyasztást nem találjuk ki.
         </p>
       </article>{/if}

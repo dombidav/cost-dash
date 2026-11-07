@@ -18,27 +18,37 @@ export function gasReport(data: AppState, detailed: boolean): Report {
   const report: Report = { category: "Földgáz", meters: [meter] };
   if (!detailed) return report;
 
-  const annual = calculateGasYear(data.settings, readings, data.year);
+  const annual = calculateGasYear(
+    data.settings,
+    readings,
+    data.year,
+    data.billing,
+  );
   const bill = calculateBilling(data.settings, readings, data.billing);
   const stats = calculateStatistics(data, annual, bill);
-  const hasBalance = annual.items.length > 1 || annual.complete;
   report.period = `${annual.start} – ${annual.end}`;
   meter.statistics = {
-    note:
-      hasBalance && !annual.complete
-        ? "Az év eleji mérőállás hiányzik, ezért a hátralévő keret felső becslés."
-        : undefined,
+    note: annual.opening
+      ? "Az évkezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
+      : undefined,
     rows: [
       ["Éves kedvezményes keret", quantity(annual.annual, "m³")],
       [
-        "Hátralévő kedvezményes keret",
-        quantity(hasBalance ? annual.remaining : null, "m³"),
+        annual.opening
+          ? "Becsült hátralévő keret"
+          : "Hátralévő kedvezményes keret",
+        quantity(annual.remaining, "m³"),
       ],
       ["Utolsó mérés a kedvezményes évben", annual.last?.date ?? "-"],
-      [
-        "Követett fogyasztás",
-        quantity(hasBalance ? annual.consumed : null, "m³"),
-      ],
+      ["Mért fogyasztás", quantity(annual.measured, "m³")],
+      ...(annual.opening
+        ? [
+            [
+              "Becsült hiányzó fogyasztás",
+              quantity(annual.opening.volume, "m³"),
+            ] as [string, string],
+          ]
+        : []),
       [
         "Legutóbbi mért szakasz napi átlaga",
         quantity(stats.latest?.average, "m³/nap", 2),

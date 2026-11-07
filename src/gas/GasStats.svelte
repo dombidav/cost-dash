@@ -247,14 +247,16 @@
         <span>{fmt(result.headroom, 2)}</span><small>m³/nap</small>
       </div>
       <p class="stat-description">
-        {!result.annual.complete
-          ? `Évkezdő (${result.annual.start}) állás szükséges.`
+        {result.annual.remaining === null
+          ? "Mérőállás vagy becsülhető kezdőszakasz szükséges."
           : result.remainingDays === 0
-            ? "Ez a kedvezményes év már teljesen le van mérve."
-            : `Az utolsó méréskor ${fmt(result.annual.remaining)} m³ és ${result.remainingDays} nap volt hátra.`}
+            ? "A kedvezményes év véget ért."
+            : `Az utolsó méréskor ${fmt(result.annual.remaining)} m³ ${result.annual.opening ? "becsült keret" : "keret"} és ${result.remainingDays} nap volt hátra.`}
       </p>
       <p class="stat-footnote">
         Az éves maradék egyszerű napi átlaga, nem a havi szezonális kedvezmény.
+        {#if result.annual.opening}Az évkezdetkor hiányzó fogyasztást havi
+          súlyozással becsültük.{/if}
         Az utolsó mérés óta eltelt fogyasztást nem becsüljük hozzá.
       </p>
     </article>
@@ -271,7 +273,9 @@
         {result.annualKind === "measured"
           ? "A kedvezményes év nyitó és záró méréséből számolt tényleges mennyiség."
           : result.annualKind === "forecast"
-            ? "Mért fogyasztás / megfigyelt éves fogyasztási profilsúly. A példaprofil szerkeszthető, ez nem időjárás-előrejelzés."
+            ? result.annual.last?.date === result.annual.next
+              ? "Az évben mért fogyasztás és a havi súlyozással becsült évkezdő rész együtt."
+              : "A mért szakasz fogyasztását a havi profil alapján vetítjük ki az egész évre."
             : result.annualKind === "manual"
               ? "Kevés a mérés, ezért a kézzel megadott éves becslést mutatjuk."
               : "Legalább 30 nap és az éves profilsúly 5%-ának megfigyelése kell; addig megadhatsz kézi éves becslést."}

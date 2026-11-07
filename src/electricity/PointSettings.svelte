@@ -2,6 +2,7 @@
   import Field from "../components/Field.svelte";
   import Select from "../components/Select.svelte";
   import { fmt } from "../lib/format";
+  import { consumptionProfiles } from "./seasonal-profile";
   import {
     AREAS,
     TARIFFS,
@@ -129,6 +130,18 @@
             decimal
             oncommit={(v) => oncommit("annualEstimate", v)}
           />
+          {#if point.tariff !== "H"}
+            <Select
+              id="electricity-consumption-profile"
+              label="Szezonális fogyasztási profil"
+              value={point.consumptionProfile ??
+                (point.tariff === "B_GEO" ? "winter" : "steady")}
+              options={Object.entries(consumptionProfiles).map(
+                ([value, profile]) => ({ value, label: profile.label }),
+              )}
+              oncommit={(v) => oncommit("consumptionProfile", v)}
+            />
+          {/if}
         </div>
         <p class="estimate-hint">
           Kiinduló becslés: {fmt(DEFAULT_ANNUAL_ESTIMATE, 0)} kWh/év, a
@@ -164,8 +177,9 @@
                 oncommit={(v) => oncommit("heatingPercent", v)}
               />{/if}
             <p class="field-hint">
-              Az éves kézi becslés elosztásához. Pontos mérések esetén a mért
-              fogyasztást használjuk.
+              {point.tariff === "H"
+                ? "Ezzel az aránnyal osztjuk el a becsült fogyasztást a fűtési idény és az év többi része között."
+                : "Ezt az arányt akkor használjuk a becsléshez, ha nincs mért megoszlás a két regiszter között."}
             </p>
           </div>
         {/if}

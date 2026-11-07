@@ -11,6 +11,8 @@ import {
   yearPeriod,
 } from "./calendar";
 import type { Settings, Reading, Billing, BillingMode } from "./types";
+import { consumptionInterval } from "./lib/consumption";
+import { estimateOpening, monthlyProfile } from "./lib/seasonal-consumption";
 /* Calculation and validation helpers. */
 export const ANNUAL_MJ = 63645;
 // MVM monthly fixed allowance (rounded MJ/month, effective 2024-08-01).
@@ -184,18 +186,32 @@ export function calculateGasYear(
   settings: Settings,
   readings: Reading[],
   year: number,
+  billing: Billing,
 ) {
   const { start, end: next, days: length } = yearPeriod(year);
   const annual = ANNUAL_MJ / (settings.heat * settings.correction);
   // The next August 1 is a closing boundary reading for this year as well.
-  const items = sortByDate(readings).filter(
-    (r) => r.date >= start && r.date <= next,
-  );
+  const ordered = sortByDate(readings);
+  const items = ordered.filter((r) => r.date >= start && r.date <= next);
   const first = items[0],
     last = items.at(-1);
-  const consumed = items.length > 1 ? last!.value - first.value : 0;
+  const tracked =
+    first && last
+      ? consumptionInterval(first.date, last.date, last.value - first.value)
+      : null;
   const complete = !!first && first.date === start;
-  const remaining = Math.max(0, annual - consumed);
+  const opening = estimateOpening(
+    start,
+    first,
+    ordered.filter((r) => r.date < start).at(-1),
+    tracked,
+    monthlyProfile(billing.weights),
+    parseNumber(billing.annualEstimate),
+  );
+  const measured = tracked?.volume ?? (complete ? 0 : null);
+  const consumed =
+    complete || opening ? (measured ?? 0) + (opening?.volume ?? 0) : null;
+  const remaining = consumed === null ? null : Math.max(0, annual - consumed);
   return {
     start,
     next,
@@ -207,10 +223,14 @@ export function calculateGasYear(
     annual,
     daily: annual / length,
     consumed,
+    measured,
+    opening,
     complete,
     remaining,
-    over: Math.max(0, consumed - annual),
-    percent: Math.max(0, Math.min(100, (remaining / annual) * 100)),
-    energy: consumed * settings.heat * settings.correction,
+    over: consumed === null ? null : Math.max(0, consumed - annual),
+    percent:
+      remaining === null
+        ? null
+        : Math.max(0, Math.min(100, (remaining / annual) * 100)),
   };
 }

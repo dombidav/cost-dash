@@ -8,12 +8,12 @@ import {
 import {
   addDays,
   days,
-  monthDays,
   parseNumber,
   previousYear,
   validDate,
 } from "./calendar";
 import { consumptionInterval, percentChange } from "./lib/consumption";
+import { monthlyProfile } from "./lib/seasonal-consumption";
 import { R } from "./reference-data";
 export function defaultStatistics(): StatisticsSettings {
   return {
@@ -74,15 +74,6 @@ export function validateStatistics(stats: StatisticsSettings) {
     return "A feltételezett kazánhatásfok 0-nál nagyobb, legfeljebb 100% lehet.";
   return "";
 }
-function profileShare(start: string, end: string, weights: readonly number[]) {
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  let share = 0;
-  for (let date = start; date < end; date = addDays(date, 1)) {
-    const month = Number(date.slice(5, 7)) - 1;
-    share += weights[month] / total / monthDays(date);
-  }
-  return share;
-}
 export function baseBetween(start: string, end: string, annualBase: number) {
   let base = 0;
   for (let date = start; date < end; date = addDays(date, 1)) {
@@ -132,7 +123,7 @@ export function calculateStatistics(
   const fullYear =
     !!tracked && annual.complete && annual.last?.date === annual.next;
   const share = tracked
-    ? profileShare(tracked.start, tracked.end, billing.weights)
+    ? monthlyProfile(billing.weights)(tracked.start, tracked.end)
     : 0;
   const canForecast = !!tracked && tracked.days >= 30 && share >= 0.05;
   let annualVolume: number | null = null;
@@ -140,18 +131,24 @@ export function calculateStatistics(
   if (fullYear) {
     annualVolume = tracked.volume;
     annualKind = "measured";
+  } else if (annual.opening && annual.last?.date === annual.next) {
+    annualVolume = annual.consumed;
+    annualKind = "forecast";
   } else if (canForecast) {
-    annualVolume = tracked.volume / share;
+    annualVolume = Math.max(annual.consumed ?? 0, tracked.volume / share);
     annualKind = "forecast";
   } else if (billing.annualEstimate.trim() !== "") {
-    annualVolume = parseNumber(billing.annualEstimate);
+    annualVolume = Math.max(
+      annual.consumed ?? 0,
+      parseNumber(billing.annualEstimate),
+    );
     annualKind = "manual";
   }
   const remainingDays = annual.last
     ? days(annual.last.date, annual.next)
     : null;
   const headroom =
-    annual.complete && remainingDays !== null && remainingDays > 0
+    annual.remaining !== null && remainingDays !== null && remainingDays > 0
       ? annual.remaining / remainingDays
       : null;
   const priorStart = tracked ? previousYear(tracked.start) : null;

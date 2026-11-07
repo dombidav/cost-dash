@@ -50,9 +50,10 @@ export function electricityReport(
     const unlimited = tariff === "B_GEO" && year.active > 0;
     const qualifier = tariff === "H" ? " (fűtési idényen kívül)" : "";
     report.meters[index].statistics = {
-      note:
-        !unlimited && year.remaining !== null && !year.complete
-          ? "Az időszak eleji mérőállás hiányzik, ezért a hátralévő keret felső becslés."
+      note: year.opening
+        ? "A kezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
+        : year.seasonSplitEstimated
+          ? "Az idényhatárt átfogó mért fogyasztást naparányosan osztottuk meg."
           : undefined,
       rows: [
         [
@@ -62,11 +63,19 @@ export function electricityReport(
             : quantity(year.active ? year.quota.cap : null, "kWh"),
         ],
         [
-          `Hátralévő keret${qualifier}`,
+          `${year.remainingEstimated ? "Becsült hátralévő keret" : "Hátralévő keret"}${qualifier}`,
           unlimited ? "Korlátlan" : quantity(year.remaining, "kWh"),
         ],
         ["Utolsó mérés a kedvezményes évben", year.last?.date ?? "-"],
-        ["Követett fogyasztás", quantity(year.tracked?.volume, "kWh")],
+        ["Mért fogyasztás", quantity(year.measuredVolume, "kWh")],
+        ...(year.opening
+          ? [
+              [
+                "Becsült hiányzó fogyasztás",
+                quantity(year.opening.volume, "kWh"),
+              ] as [string, string],
+            ]
+          : []),
         [
           "Legutóbbi mért szakasz napi átlaga",
           quantity(year.latest?.average, "kWh/nap", 2),

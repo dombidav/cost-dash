@@ -11,6 +11,7 @@
   import { addDays, parseNumber, today, validDate, yearFor } from "../calendar";
   import { storage } from "../lib/storage.svelte";
   import { trimReadings } from "../lib/reading-limit";
+  import { openingExplanation } from "../lib/seasonal-consumption";
   import { initialGas, validGas, migrateGas } from "./state";
   import { fmt, uid } from "../lib/format";
   import { toast } from "../lib/ui.svelte";
@@ -37,7 +38,7 @@
     formError = $state<ReturnType<typeof readingError>>();
   let meterInput = $state<HTMLInputElement>();
   let annual = $derived(
-    calculateGasYear(model.settings, model.readings, model.year),
+    calculateGasYear(model.settings, model.readings, model.year, model.billing),
   );
   let bill = $derived(
     calculateBilling(model.settings, model.readings, model.billing),
@@ -52,7 +53,6 @@
       ]),
     ].sort((a, b) => b - a),
   );
-  let showBalance = $derived(annual.items.length > 1 || annual.complete);
   const modes = [
     {
       value: "flat",
@@ -282,42 +282,40 @@
           ? "ÉVES ÁTTEKINTÉS"
           : annual.complete
             ? "ÉVKEZDÉSTŐL KÖVETVE"
-            : "HIÁNYOS IDŐSZAK"}</span
+            : annual.opening
+              ? "ÉVKEZDET BECSÜLVE"
+              : "HIÁNYOS IDŐSZAK"}</span
       >
     </div>
     <div class="balance-main">
       <div class="balance-copy">
         <p class="muted">
-          {annual.over
-            ? "A kedvezményes keret elfogyott"
-            : annual.complete
-              ? "Még rendelkezésre áll"
-              : "Becsült maradék · legfeljebb"}
+          {annual.opening
+            ? "Becsült hátralévő keret"
+            : "Hátralévő kedvezményes keret"}
         </p>
         <div class="big-number">
-          <span>{showBalance ? fmt(annual.remaining) : "—"}</span><span
-            class="big-unit">m³</span
-          >
+          <span>{fmt(annual.remaining)}</span><span class="big-unit">m³</span>
         </div>
         <p class="energy">
-          {showBalance
+          {annual.remaining !== null
             ? `${fmt(annual.remaining * model.settings.heat * model.settings.correction, 0)} MJ energiának felel meg`
-            : "Az első méréseddel kezdődik."}
+            : "A maradékhoz több adat kell."}
         </p>
         <div class="legend">
           <span class="status-dot"></span><span
             >{annual.over
-              ? `${fmt(annual.over)} m³-rel a keret felett`
+              ? `${annual.opening ? "Becsült túllépés" : "Keret felett"} · ${fmt(annual.over)} m³`
               : "Éves energiakeret: 63 645 MJ"}</span
           >
         </div>
       </div>
-      <Gauge percent={showBalance ? annual.percent : null} />
+      <Gauge percent={annual.percent} />
     </div>
     <div class="balance-stats">
       <div>
         <span>Mért fogyasztás</span><strong
-          >{showBalance ? fmt(annual.consumed) : "—"} <small>m³</small></strong
+          >{fmt(annual.measured)} <small>m³</small></strong
         >
       </div>
       <div>
@@ -325,18 +323,28 @@
           >{fmt(annual.annual)} <small>m³</small></strong
         >
       </div>
-      <div>
-        <span>Éves napi átlag</span><strong
-          >{fmt(annual.daily, 2)} <small>m³</small></strong
-        >
-      </div>
+      {#if annual.opening}
+        <div>
+          <span>Becsült hiányzó fogyasztás</span><strong
+            >{fmt(annual.opening.volume)} <small>m³</small></strong
+          >
+        </div>
+      {:else}
+        <div>
+          <span>Éves napi keretátlag</span><strong
+            >{fmt(annual.daily, 2)} <small>m³</small></strong
+          >
+        </div>
+      {/if}
     </div>
     <p class="balance-note">
       {!annual.first
         ? `Az éves követéshez ${annual.start}-i kezdőállást adj meg.`
-        : !annual.complete
-          ? `Követés: ${annual.first.date} → ${annual.last!.date}. Az évkezdés előtti hiányzó rész miatt a maradék felső becslés.`
-          : `Követett időszak: ${annual.first.date} → ${annual.last!.date}. A maradék az utolsó mérés időpontjára vonatkozik.`}
+        : annual.complete
+          ? `Követett időszak: ${annual.first.date} → ${annual.last!.date}. A maradék az utolsó mérés időpontjára vonatkozik.`
+          : openingExplanation(annual.opening)}
+      {#if annual.opening}A becsült keret az utolsó mérésre ({annual.last
+          ?.date}) vonatkozik.{/if}
     </p>
   </section>
   <section class="card reading-card" id="gas-new-reading">
@@ -475,39 +483,39 @@
       label="Záró dátum · már nem része"
       value={model.billing.end}
       oncommit={(value) => billing("end", value)}
-    />{#if model.billing.mode !== "reading"}<Field
-        id="gas-annual-estimate"
-        label="Becsült éves fogyasztás"
-        value={model.billing.annualEstimate}
-        unit="m³/év"
-        placeholder="pl. 1800"
-        decimal
-        oncommit={(value) => billing("annualEstimate", value)}
-      />{/if}
+    /><Field
+      id="gas-annual-estimate"
+      label="Becsült éves fogyasztás"
+      value={model.billing.annualEstimate}
+      unit="m³/év"
+      placeholder="pl. 1800"
+      decimal
+      oncommit={(value) => billing("annualEstimate", value)}
+    />
   </div>
   <button class="text-button" type="button" onclick={useReadings}
     >Utolsó két mérés időszakának használata ↗</button
   >
-  {#if model.billing.mode === "temperature"}<details class="profile-settings">
-      <summary
-        >Fogyasztási profilsúlyok szerkesztése <span aria-hidden="true">＋</span
-        ></summary
-      >
-      <p class="field-hint">
-        Szemléltető példasúlyok, nem MVM-időjárási adatok. A fogyasztást
-        becsülik, nem a kedvezménygörbét. Saját súly / összes súly adja a hónap
-        részesedését.
-      </p>
-      <div class="profile-inputs">
-        {#each months as month, index (month)}<Field
-            id={`gas-profile-${index}`}
-            label={month}
-            value={model.billing.weights[index]}
-            decimal
-            oncommit={(value) => weight(index, value)}
-          />{/each}
-      </div>
-    </details>{/if}
+  <details class="profile-settings">
+    <summary
+      >Fogyasztási profilsúlyok szerkesztése <span aria-hidden="true">＋</span
+      ></summary
+    >
+    <p class="field-hint">
+      A súlyok megadják, az éves fogyasztás mekkora része jut egy hónapra. Az
+      évkezdet becsléséhez is ezeket használjuk. Ha vannak saját havi
+      fogyasztási adataid, megadhatod az arányukat.
+    </p>
+    <div class="profile-inputs">
+      {#each months as month, index (month)}<Field
+          id={`gas-profile-${index}`}
+          label={month}
+          value={model.billing.weights[index]}
+          decimal
+          oncommit={(value) => weight(index, value)}
+        />{/each}
+    </div>
+  </details>
   <div class="billing-results">
     <div>
       <span
@@ -626,8 +634,9 @@
       <h3>Mérésekből fogyasztás</h3>
       <p>
         Az év első és utolsó mérésének különbsége. A következő augusztus 1.
-        záróállás is lehet. Évkezdő állás nélkül a maradék felső becslés;
-        mérőcsere és átfordulás nincs modellezve.
+        záróállás is lehet. Évkezdő állás nélkül a hiányzó fogyasztást a havi
+        fogyasztási profil alapján becsüljük. Mérőcsere és átfordulás nincs
+        modellezve.
       </p>
     </div>
     <div>

@@ -1,5 +1,11 @@
 import { uid } from "../lib/format";
 import { consumptionInterval } from "../lib/consumption";
+import { estimateOpening } from "../lib/seasonal-consumption";
+import {
+  consumptionProfiles,
+  electricityProfile,
+  heating,
+} from "./seasonal-profile";
 import {
   today,
   validDate,
@@ -27,6 +33,7 @@ import type {
   DailyConsumption,
 } from "./types";
 export const ANNUAL_CAP = 2523;
+export { heating };
 export function createPoint(index = 1): ElectricityPoint {
   const { start, end } = monthPeriod();
   return {
@@ -85,10 +92,6 @@ export function migrateState(data: unknown) {
       point.annualEstimate = String(DEFAULT_ANNUAL_ESTIMATE);
   data.annualEstimateDefaultVersion = 1;
   return data;
-}
-export function heating(date: string) {
-  const md = date.slice(5);
-  return md >= "10-15" || md <= "04-15";
 }
 export function eligible(p: ElectricityPoint, date: string) {
   return date >= p.eligibleFrom && (!p.eligibleTo || date < p.eligibleTo);
@@ -189,6 +192,11 @@ export function validatePoint(p: ElectricityPoint) {
   )
     return "A becsült éves fogyasztás érvényes, legfeljebb 1 000 000 000 kWh érték lehet.";
   if (
+    p.consumptionProfile !== undefined &&
+    !Object.hasOwn(consumptionProfiles, p.consumptionProfile)
+  )
+    return "Válassz érvényes fogyasztási profilt.";
+  if (
     ![p.offPercent, p.heatingPercent].every(
       (v) => Number.isFinite(v) && v >= 0 && v <= 100,
     )
@@ -259,11 +267,18 @@ function distribute(
   end: string,
   peak: number,
   off: number,
+  share?: (start: string, end: string) => number,
 ): DailyConsumption[] {
   const length = days(start, end),
+    weight = share?.(start, end) ?? 0,
     result: DailyConsumption[] = [];
-  for (let date = start; date < end; date = addDays(date, 1))
-    result.push({ date, peak: peak / length, off: off / length });
+  for (let date = start; date < end;) {
+    const next = addDays(date, 1);
+    const fraction =
+      share && weight > 0 ? share(date, next) / weight : 1 / length;
+    result.push({ date, peak: peak * fraction, off: off * fraction });
+    date = next;
+  }
   return result;
 }
 export function measured(p: ElectricityPoint, start: string, end: string) {
@@ -405,10 +420,13 @@ export function annual(p: ElectricityPoint, year: number) {
     start = p.eligibleFrom > period.start ? p.eligibleFrom : period.start,
     end = p.eligibleTo && p.eligibleTo < period.end ? p.eligibleTo : period.end;
   const active = end > start ? days(start, end) : 0;
-  const items = sortByDate(p.readings).filter(
+  const ordered = sortByDate(p.readings);
+  const items = ordered.filter(
     (r) => r.date >= period.start && r.date <= period.end,
   );
-  const usable = items.filter((r) => r.date >= start && r.date <= end);
+  const usable = items.filter(
+    (r) => r.date >= start && r.date <= end && total(p, r) !== null,
+  );
   const first = usable[0],
     last = usable.at(-1),
     tracked = interval(p, first, last);
@@ -416,57 +434,123 @@ export function annual(p: ElectricityPoint, year: number) {
     previous = interval(p, usable.at(-3), usable.at(-2));
   const complete = !!first && first.date === start;
   const measuredFull = !!tracked && complete && last?.date === end;
+  const share = electricityProfile(p);
+  const manual = parseNumber(p.annualEstimate);
+  const previousReading = ordered
+    .filter((r) => r.date < start && total(p, r) !== null)
+    .at(-1);
+  const readingValue = (r: ElectricityReading | undefined) =>
+    r && { date: r.date, value: total(p, r)! };
+  const opening = estimateOpening(
+    start,
+    readingValue(first),
+    readingValue(previousReading),
+    tracked,
+    share,
+    manual,
+  );
+  const measuredVolume = tracked?.volume ?? (complete ? 0 : null);
+  const consumed =
+    complete || opening ? (measuredVolume ?? 0) + (opening?.volume ?? 0) : null;
+  const activeShare = share(start, end);
+  const trackedShare = tracked ? share(tracked.start, tracked.end) : 0;
   let volume: number | null = null,
-    kind: "missing" | "measured" | "linear" | "manual" = "missing";
+    kind: "missing" | "measured" | "seasonal" | "manual" = "missing";
   if (measuredFull) {
     volume = tracked!.volume;
     kind = "measured";
-  } else if (p.tariff !== "H" && tracked && tracked.days >= 30) {
-    volume = tracked.average * active;
-    kind = "linear";
-  } else if (p.annualEstimate.trim() !== "") {
-    volume = (parseNumber(p.annualEstimate) * active) / period.days;
+  } else if (last?.date === end && consumed !== null) {
+    volume = consumed;
+    kind = "seasonal";
+  } else if (tracked && tracked.days >= 30 && trackedShare >= 0.05) {
+    volume = Math.max(
+      consumed ?? 0,
+      (tracked.volume * activeShare) / trackedShare,
+    );
+    kind = "seasonal";
+  } else if (active > 0 && Number.isFinite(manual)) {
+    volume = Math.max(consumed ?? 0, manual * activeShare);
     kind = "manual";
   }
+  const measuredIntervals = usable
+    .slice(1)
+    .map((r, i) =>
+      distribute(
+        usable[i].date,
+        r.date,
+        r.peak - usable[i].peak,
+        p.tariff === "A2" ? r.off! - usable[i].off! : 0,
+      ),
+    );
+  const observed = measuredIntervals.flat();
+  const seasonSplitEstimated =
+    p.tariff === "H" &&
+    measuredIntervals.some(
+      (segment) =>
+        sum(segment) > 0 &&
+        segment.some((d) => heating(d.date)) &&
+        segment.some((d) => !heating(d.date)),
+    );
   let projected: DailyConsumption[] | null = null;
-  if (measuredFull) projected = measured(p, start, end);
+  if (measuredFull) projected = observed;
   else if (volume !== null && active > 0) {
     const offRatio =
       p.tariff === "A2"
-        ? kind === "linear" && first && last
-          ? (last.off! - first.off!) / (tracked!.volume || 1)
+        ? tracked && tracked.volume > 0 && first && last
+          ? (last.off! - first.off!) / tracked.volume
           : p.offPercent / 100
         : 0;
-    if (p.tariff === "H") {
-      let heatDays = 0;
-      for (let date = start; date < end; date = addDays(date, 1))
-        if (heating(date)) heatDays++;
-      const heatShare =
-        heatDays === 0 ? 0 : heatDays === active ? 1 : p.heatingPercent / 100;
-      projected = [];
-      for (let date = start; date < end; date = addDays(date, 1))
-        projected.push({
-          date,
-          peak: heating(date)
-            ? (volume * heatShare) / heatDays
-            : (volume * (1 - heatShare)) / (active - heatDays),
-          off: 0,
-        });
-    } else
-      projected = distribute(
-        start,
-        end,
-        volume * (1 - offRatio),
-        volume * offRatio,
-      );
+    let openingOffRatio = offRatio;
+    if (
+      p.tariff === "A2" &&
+      opening?.basis === "bracket" &&
+      first &&
+      previousReading
+    ) {
+      const bracketVolume = total(p, first)! - total(p, previousReading)!;
+      if (bracketVolume > 0)
+        openingOffRatio = (first.off! - previousReading.off!) / bracketVolume;
+    }
+    const distributeEstimate = (
+      from: string,
+      to: string,
+      amount: number,
+      ratio = offRatio,
+    ) => distribute(from, to, amount * (1 - ratio), amount * ratio, share);
+    projected =
+      consumed !== null && last
+        ? [
+            ...(opening
+              ? distributeEstimate(
+                  start,
+                  opening.end,
+                  opening.volume,
+                  openingOffRatio,
+                )
+              : []),
+            ...observed,
+            ...distributeEstimate(last.date, end, volume - consumed),
+          ]
+        : distributeEstimate(start, end, volume);
   }
   const annualCost = active > 0 ? cost(p, start, end, projected) : null;
-  const observed = tracked ? measured(p, tracked.start, tracked.end) : null;
-  const usedNormal =
-    observed
-      ?.filter((d) => dailyCap(p, d.date) !== null)
-      .reduce((n, d) => n + d.peak + d.off, 0) ??
-    (complete && first === last ? 0 : null);
+  let usedNormal: number | null = consumed;
+  if (p.tariff === "B_GEO") usedNormal = null;
+  if (p.tariff === "H" && consumed !== null) {
+    const observedNormal = sum(observed.filter((d) => !heating(d.date)));
+    const openingShare = opening ? share(start, opening.end) : 0;
+    const estimatedNormal = opening
+      ? opening.volume *
+        (openingShare > 0
+          ? share(start, opening.end, true) / openingShare
+          : sum(
+              distribute(start, opening.end, 1, 0).filter(
+                (d) => !heating(d.date),
+              ),
+            ))
+      : 0;
+    usedNormal = observedNormal + estimatedNormal;
+  }
   const q =
     active > 0
       ? quota(p, start, end)
@@ -492,6 +576,9 @@ export function annual(p: ElectricityPoint, year: number) {
     first,
     last,
     tracked,
+    opening,
+    measuredVolume,
+    consumed,
     latest,
     previous,
     complete,
@@ -502,6 +589,9 @@ export function annual(p: ElectricityPoint, year: number) {
     annualCost,
     usedNormal,
     remaining,
+    remainingEstimated:
+      remaining !== null && (opening !== null || seasonSplitEstimated),
+    seasonSplitEstimated,
     remainingDays,
     quota: q,
     prior,

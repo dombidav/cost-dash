@@ -27,6 +27,7 @@ export interface ElectricityPoint {
   extraFrom: string;
   extraTo: string;
   annualEstimate: string;
+  consumptionProfile?: "steady" | "summer" | "winter";
   offPercent: number;
   heatingPercent: number;
   solar: "none" | "gross" | "balance";
