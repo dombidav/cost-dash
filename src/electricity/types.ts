@@ -15,6 +15,7 @@ export interface ElectricityPoint {
 }
 export interface ElectricityState {
   version: 1; selected: string; year: number; points: ElectricityPoint[];
+  annualEstimateDefaultVersion?: 1;
   aggregate: { start: string; end: string };
   stats: { people: string; floorArea: string; region: string; saving: number; deviceWatts: number; dailyHours: number };
 }

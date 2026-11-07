@@ -1,14 +1,20 @@
 import { today, validDate, number, addDays, days, yearFor, yearPeriod, monthDays, previousYear } from '../calendar';
-import { AREAS, TARIFFS, supported, officialRates } from './reference';
+import { AREAS, TARIFFS, supported, officialRates, DEFAULT_ANNUAL_ESTIMATE } from './reference';
 import type { ElectricityPoint, ElectricityReading, ElectricityState, DailyConsumption } from './types';
 export const ANNUAL_CAP = 2523;
-const uid = () => crypto.randomUUID();
+const uid = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 export function createPoint(index = 1): ElectricityPoint {
   const start = `${today().slice(0, 7)}-01`, d = new Date(`${start}T00:00:00Z`);
   const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
-  return { id: uid(), name: index === 1 ? 'Nappali mérő' : `${index}. mérési pont`, area: 'elmu', tariff: 'A1', rates: officialRates('elmu', 'A1'), eligibleFrom: '2022-08-01', eligibleTo: '', extraAnnual: 0, extraFrom: '2022-08-01', extraTo: '', annualEstimate: '', offPercent: 50, heatingPercent: 80, solar: 'none', billing: { schedule: 'flat', metering: 'manual', source: 'readings', start, end, peak: '', off: '', credit: 0, balance: '' }, readings: [], draft: { date: today(), peak: '', off: '' } };
+  return { id: uid(), name: index === 1 ? 'Nappali mérő' : `${index}. mérési pont`, area: 'elmu', tariff: 'A1', rates: officialRates('elmu', 'A1'), eligibleFrom: '2022-08-01', eligibleTo: '', extraAnnual: 0, extraFrom: '2022-08-01', extraTo: '', annualEstimate: String(DEFAULT_ANNUAL_ESTIMATE), offPercent: 50, heatingPercent: 80, solar: 'none', billing: { schedule: 'flat', metering: 'manual', source: 'readings', start, end, peak: '', off: '', credit: 0, balance: '' }, readings: [], draft: { date: today(), peak: '', off: '' } };
 }
-export function initialState(): ElectricityState { const point = createPoint(); return { version: 1, selected: point.id, year: yearFor(today()), points: [point], aggregate: { start: point.billing.start, end: point.billing.end }, stats: { people: '', floorArea: '', region: 'country', saving: 5, deviceWatts: 2000, dailyHours: 1 } }; }
+export function initialState(): ElectricityState { const point = createPoint(); return { version: 1, annualEstimateDefaultVersion: 1, selected: point.id, year: yearFor(today()), points: [point], aggregate: { start: point.billing.start, end: point.billing.end }, stats: { people: '', floorArea: '', region: 'country', saving: 5, deviceWatts: 2000, dailyHours: 1 } }; }
+export function migrateState(data: unknown) {
+  if (!validState(data) || data.annualEstimateDefaultVersion === 1) return data;
+  for (const point of data.points) if (point.annualEstimate.trim() === '') point.annualEstimate = String(DEFAULT_ANNUAL_ESTIMATE);
+  data.annualEstimateDefaultVersion = 1;
+  return data;
+}
 export function heating(date: string) { const md = date.slice(5); return md >= '10-15' || md <= '04-15'; }
 export function eligible(p: ElectricityPoint, date: string) { return date >= p.eligibleFrom && (!p.eligibleTo || date < p.eligibleTo); }
 export function sorted(p: ElectricityPoint) { return [...p.readings].sort((a, b) => a.date.localeCompare(b.date)); }
@@ -112,6 +118,12 @@ export function periodData(p: ElectricityPoint) {
   if (b.peak.trim() === '' || p.tariff === 'A2' && b.off.trim() === '') return null;
   return distribute(b.start, b.end, number(b.peak), p.tariff === 'A2' ? number(b.off) : 0);
 }
+export function periodResult(p: ElectricityPoint, start = p.billing.start, end = p.billing.end) {
+  const matching = start === p.billing.start && end === p.billing.end;
+  const copy = { ...p, billing: { ...p.billing, start, end } };
+  const data = !matching && p.billing.schedule !== 'flat' && p.billing.source === 'period' ? null : periodData(copy);
+  return cost(copy, start, end, data, matching ? p.billing.credit : 0);
+}
 function interval(p: ElectricityPoint, a?: ElectricityReading, b?: ElectricityReading) {
   if (!a || !b || total(p, a) === null || total(p, b) === null) return null;
   const volume = total(p, b)! - total(p, a)!, length = days(a.date, b.date);
@@ -157,7 +169,7 @@ export function annual(p: ElectricityPoint, year: number) {
 export function validState(data: unknown): data is ElectricityState {
   if (!data || typeof data !== 'object') return false;
   const s = data as ElectricityState;
-  if (s.version !== 1 || !Number.isInteger(s.year) || s.year < 2022 || s.year > 9998 || !Array.isArray(s.points) || !s.points.length || s.points.length > 20 || !s.points.some(p => p.id === s.selected) || new Set(s.points.map(p => p.id)).size !== s.points.length || !s.stats) return false;
+  if (s.version !== 1 || (s.annualEstimateDefaultVersion !== undefined && s.annualEstimateDefaultVersion !== 1) || !Number.isInteger(s.year) || s.year < 2022 || s.year > 9998 || !Array.isArray(s.points) || !s.points.length || s.points.length > 20 || !s.points.some(p => p.id === s.selected) || new Set(s.points.map(p => p.id)).size !== s.points.length || !s.stats) return false;
   for (const p of s.points) {
     if (!p || typeof p.id !== 'string' || typeof p.name !== 'string' || !p.rates || !p.billing || !Array.isArray(p.readings) || !p.draft || !validDate(p.draft.date) || typeof p.draft.peak !== 'string' || typeof p.draft.off !== 'string' || validatePoint(p)) return false;
     if (new Set(p.readings.map(r => r.id)).size !== p.readings.length || p.readings.some(r => typeof r.id !== 'string' || validateReading(p, r, false))) return false;

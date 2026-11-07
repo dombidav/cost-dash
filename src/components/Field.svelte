@@ -1,0 +1,14 @@
+<script lang="ts">
+  import Help from './Help.svelte';
+  import type { FieldHelp } from '../lib/field-help';
+  let { id, label, value, unit = '', placeholder = '', decimal = false, hiddenLabel = false, help, oncommit }:
+    { id: string; label: string; value: string | number | null; unit?: string; placeholder?: string; decimal?: boolean; hiddenLabel?: boolean; help?: FieldHelp; oncommit: (value: string) => string | void } = $props();
+  let draft = $state(''), error = $state('');
+  $effect(() => { draft = value === null ? '' : String(value); });
+  function commit() { error = oncommit(draft) || ''; }
+</script>
+<div class="field">
+  {#if hiddenLabel}<label for={id} class="sr-only">{label}</label>{:else}<div class="field-label"><label for={id}>{label}</label><Help forId={id} {label} content={help}/></div>{/if}
+  <div class="field-control"><div class="field-input" class:input-unit={!!unit}><input {id} type="text" inputmode={decimal ? 'decimal' : 'text'} bind:value={draft} {placeholder} autocomplete="off" onblur={commit} aria-invalid={!!error} aria-describedby={`${id}-help${error ? ` ${id}-error` : ''}`} />{#if unit}<span>{unit}</span>{/if}</div>{#if hiddenLabel}<Help forId={id} {label} content={help}/>{/if}</div>
+  {#if error}<p id={`${id}-error`} class="field-error" role="alert">{error}</p>{/if}
+</div>

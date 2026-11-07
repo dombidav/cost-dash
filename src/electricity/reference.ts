@@ -21,4 +21,6 @@ export function officialRates(area: Area, tariff: Tariff): Rates {
 }
 // KSH 15.1.2.25, live 2025 column, retrieved 2026-11-06, updated 2026-10-30.
 export const NATIONAL_MONTHLY = 205.7;
+// Rounded starting estimate, not a measured value or the discounted allowance.
+export const DEFAULT_ANNUAL_ESTIMATE = Math.round(NATIONAL_MONTHLY * 12 / 100) * 100;
 export const ELECTRICITY_REGIONS: Record<string, number> = { Budapest: 190, Pest: 277.7, Fejér: 233.4, 'Komárom-Esztergom': 228.8, Veszprém: 209.3, 'Győr-Moson-Sopron': 215.5, Vas: 215.1, Zala: 162.8, Baranya: 187.2, Somogy: 179.2, Tolna: 218.5, 'Borsod-Abaúj-Zemplén': 174.2, Heves: 192.6, Nógrád: 198.1, 'Hajdú-Bihar': 207.3, 'Jász-Nagykun-Szolnok': 203.3, 'Szabolcs-Szatmár-Bereg': 216.8, 'Bács-Kiskun': 186.2, Békés: 173.5, 'Csongrád-Csanád': 171.2 };
