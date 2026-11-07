@@ -5,6 +5,7 @@
   import { fmt, money } from "../lib/format";
   import { monthLabel } from "../lib/months";
   import { categories } from "../lib/pages";
+  import DataCoverage from "./DataCoverage.svelte";
   import MonthComparison from "./MonthComparison.svelte";
   import UpcomingPayments from "./UpcomingPayments.svelte";
   import {
@@ -196,6 +197,7 @@
         pozitív összegek {fmt((largest.value / positiveTotal) * 100, 0)}%-a.
       </p>
     {/if}
+    <DataCoverage rows={selected} />
   </section>
 
   <section class="card" aria-labelledby="dashboard-categories">

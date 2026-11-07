@@ -178,12 +178,14 @@ export function estimateWaterMonth(
           state.rates,
           old.sewerVolume ?? old.volume,
         ).total,
+        coveredDays: days(start, end),
       };
   }
   return usage
     ? {
         value: waterBill(usage.volume, usage.from, usage.to, state.rates).total,
         partial,
+        coveredDays: days(usage.from, usage.to),
       }
     : null;
 }

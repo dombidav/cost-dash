@@ -67,7 +67,13 @@ export function readSources() {
 }
 
 export type Sources = ReturnType<typeof readSources>;
-type Amount = { value: number | null; partial?: boolean };
+type Amount = {
+  value: number | null;
+  partial?: boolean;
+  fromAnnualEstimate?: boolean;
+  coveredDays?: number;
+  meters?: { included: number; expected: number };
+};
 const missing: Amount = { value: null };
 
 export type MonthReport = {
@@ -125,7 +131,11 @@ function gasMonth(
     stats,
     baseBetween(start, end, stats.annualBase),
   );
-  return { value: estimate?.total ?? null };
+  return {
+    value: estimate?.total ?? null,
+    fromAnnualEstimate:
+      !(opening && closing) && billing.mode !== "reading" && volume !== null,
+  };
 }
 
 function electricityMonth(
@@ -137,6 +147,7 @@ function electricityMonth(
   let sum = 0;
   let count = 0;
   let missed = 0;
+  let fromAnnualEstimate = false;
   for (const point of points) {
     const first = point.eligibleFrom > start ? point.eligibleFrom : start;
     const last =
@@ -144,6 +155,7 @@ function electricityMonth(
     if (last <= first) continue;
     const matching = point.billing.start === start && point.billing.end === end;
     let value = matching ? periodResult(point).total : null;
+    let annual = value !== null && point.billing.schedule === "flat";
     if (value === null) {
       const readings = sortByDate(point.readings);
       const at = (date: string) =>
@@ -175,15 +187,23 @@ function electricityMonth(
         ).total;
       }
     }
-    if (value === null && current && point.billing.schedule === "flat")
+    if (value === null && current && point.billing.schedule === "flat") {
       value = periodResult(point, start, end).total;
+      annual = value !== null;
+    }
     if (value === null) missed++;
     else {
       sum += value;
       count++;
+      fromAnnualEstimate ||= annual;
     }
   }
-  return count ? { value: sum, partial: missed > 0 } : missing;
+  return {
+    value: count ? sum : null,
+    partial: count > 0 && missed > 0,
+    meters: { included: count, expected: count + missed },
+    fromAnnualEstimate,
+  };
 }
 
 function sumKnown(values: (number | null)[]) {
