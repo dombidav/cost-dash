@@ -6,6 +6,7 @@
   import { monthLabel } from "../lib/months";
   import { categories } from "../lib/pages";
   import MonthComparison from "./MonthComparison.svelte";
+  import UpcomingPayments from "./UpcomingPayments.svelte";
   import {
     categoryColorProperty,
     categoryIds,
@@ -264,6 +265,8 @@
   {#if monthIndex !== "year" && selected[0]}
     <MonthComparison row={selected[0]} {sources} {now} />
   {/if}
+
+  <UpcomingPayments {sources} {now} />
 
   <section class="card" aria-labelledby="dashboard-trend">
     <h2 id="dashboard-trend">Havi alakulás · {year}</h2>
