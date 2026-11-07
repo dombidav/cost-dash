@@ -17,6 +17,12 @@ export const categories = {
     href: "./viz.html",
     icon: "≈",
   },
+  car: {
+    label: "Autó",
+    title: "Autóköltségek",
+    href: "./auto.html",
+    icon: "↔",
+  },
 } as const;
 
 export const pages = categories;

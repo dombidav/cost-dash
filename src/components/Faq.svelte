@@ -91,6 +91,18 @@
   const questions: Record<PageId, Question[]> = {
     electricity: electricityQuestions,
     gas: gasQuestions,
+    car: [
+      {
+        question: "Miért kell liter vagy literár is a fogyasztáshoz?",
+        answer:
+          "A forintból és a kilométerből csak az út költsége számolható. A liter/100 km értékhez az elfogyasztott üzemanyag mennyisége is kell.",
+      },
+      {
+        question: "Az értékvesztést is elköltöttem?",
+        answer:
+          "Az értékvesztés a futásteljesítmény becsült hatása az autó árára. Külön mutatjuk, és nem számítjuk hozzá a kifizetéseidhez.",
+      },
+    ],
     water: [
       {
         question: "Mit tegyek, ha a településem nincs a listán?",

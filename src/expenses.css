@@ -3,6 +3,31 @@ body[data-energy="water"] {
   --accent-rgb: 137 202 255;
 }
 
+body[data-energy="car"] {
+  --accent: #ffb46e;
+  --accent-rgb: 255 180 110;
+}
+
+.expense-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.expense-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.expense-checkbox input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
 .energy-nav {
   flex-wrap: wrap;
   width: fit-content;

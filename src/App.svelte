@@ -11,6 +11,7 @@
     electricity: () => import("./electricity/ElectricityPage.svelte"),
     gas: () => import("./gas/GasPage.svelte"),
     water: () => import("./water/WaterPage.svelte"),
+    car: () => import("./car/CarPage.svelte"),
   };
   const page = pages[id]();
   void page.then(

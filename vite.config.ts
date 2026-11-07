@@ -15,6 +15,7 @@ export default defineConfig({
         gas: fileURLToPath(new URL("./index.html", import.meta.url)),
         electricity: fileURLToPath(new URL("./aram.html", import.meta.url)),
         water: fileURLToPath(new URL("./viz.html", import.meta.url)),
+        car: fileURLToPath(new URL("./auto.html", import.meta.url)),
       },
     },
     terserOptions: {
