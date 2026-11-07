@@ -134,28 +134,51 @@ export function validateReading(
   readings: Reading[],
   latestDate = today(),
 ) {
+  return readingError(candidate, readings, latestDate)?.message ?? "";
+}
+
+export function readingError(
+  candidate: Reading,
+  readings: Reading[],
+  latestDate = today(),
+): { field: "date" | "value"; message: string } | undefined {
   if (!validDate(candidate.date))
-    return "Adj meg érvényes dátumot ÉÉÉÉ-HH-NN formátumban.";
+    return {
+      field: "date",
+      message: "Adj meg érvényes dátumot ÉÉÉÉ-HH-NN formátumban.",
+    };
   if (candidate.date > latestDate)
-    return "A rögzítés dátuma nem lehet jövőbeli.";
+    return { field: "date", message: "A rögzítés dátuma nem lehet jövőbeli." };
   if (
     !Number.isFinite(candidate.value) ||
     candidate.value < 0 ||
     candidate.value > 1e12
   )
-    return "A mérőállás 0 és 1 000 000 000 000 közötti szám lehet.";
+    return {
+      field: "value",
+      message: "A mérőállás 0 és 1 000 000 000 000 közötti szám lehet.",
+    };
   const others = sortByDate(readings.filter((r) => r.id !== candidate.id));
   if (others.some((r) => r.date === candidate.date))
-    return "Erre a napra már van mérés. Módosítsd a naplóban a meglévő állást.";
+    return {
+      field: "date",
+      message:
+        "Erre a napra már van mérés. Módosítsd a naplóban a meglévő állást.",
+    };
   const before = others.filter((r) => r.date < candidate.date).at(-1);
   const after = others.find((r) => r.date > candidate.date);
   const format = (n: number) =>
     new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 3 }).format(n);
   if (before && candidate.value < before.value)
-    return `Az állás nem lehet kisebb a korábbi mérésnél (${before.date}: ${format(before.value)} m³).`;
+    return {
+      field: "value",
+      message: `Az állás nem lehet kisebb a korábbi mérésnél (${before.date}: ${format(before.value)} m³).`,
+    };
   if (after && candidate.value > after.value)
-    return `Az állás nem lehet nagyobb a következő mérésnél (${after.date}: ${format(after.value)} m³).`;
-  return "";
+    return {
+      field: "value",
+      message: `Az állás nem lehet nagyobb a következő mérésnél (${after.date}: ${format(after.value)} m³).`,
+    };
 }
 export function calculateGasYear(
   settings: Settings,

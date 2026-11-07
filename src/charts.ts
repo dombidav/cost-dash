@@ -129,7 +129,7 @@ export function drawBenchmark(
       datasets: [
         {
           data: bars.map((bar) => bar.value),
-          backgroundColor: bars.map((bar) => (bar.own ? accent : "#61766f")),
+          backgroundColor: bars.map((bar) => (bar.own ? accent : "#78897e")),
           borderRadius: 5,
           maxBarThickness: 20,
         },

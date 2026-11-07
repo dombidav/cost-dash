@@ -306,7 +306,7 @@
         kind="benchmark"
         unit="kWh"
         {bars}
-        label={bars.map((b) => `${b.label}: ${fmt(b.value)} kWh/év`).join(". ")}
+        label="Éves áramfogyasztás összehasonlítása"
       />
       <p class="stat-change">
         {yearly.volume !== null

@@ -1,4 +1,5 @@
 <script lang="ts" generics="T">
+  import { tick } from "svelte";
   import { today } from "../calendar";
   import { READING_LIMIT } from "../lib/reading-limit";
   import { backup, restore, type Category } from "../pdf/backup";
@@ -24,6 +25,8 @@
   } = $props();
 
   let input: HTMLInputElement;
+  let restoreButton: HTMLButtonElement;
+  let cancelButton = $state<HTMLButtonElement>();
   let operation = $state<"generate" | "read" | null>(null);
   let busy = $derived(operation !== null);
   let statusIndex = $state(0);
@@ -44,6 +47,7 @@
   });
 
   async function download(detailed: boolean) {
+    if (busy) return;
     operation = "generate";
     error = message = "";
     try {
@@ -106,18 +110,32 @@
       error = "A fájl nem olvasható PDF-ként.";
     } finally {
       operation = null;
+      await tick();
+      if (
+        pending &&
+        (document.activeElement === restoreButton ||
+          document.activeElement === document.body)
+      ) {
+        cancelButton?.focus();
+      }
     }
   }
 
+  async function closeRestore() {
+    pending = null;
+    error = "";
+    await tick();
+    restoreButton.focus();
+  }
+
   function apply() {
-    if (!pending) return;
+    if (!pending || busy) return;
     if (!onrestore(pending.data)) {
       error = "A visszaállított adatokat nem sikerült helyben menteni.";
       return;
     }
     const { removed } = pending;
-    pending = null;
-    error = "";
+    void closeRestore();
     message = removed
       ? `Az adatok visszaállítása sikerült. A legrégebbi ${removed} mérés kimaradt.`
       : "Az adatok visszaállítása sikerült.";
@@ -131,14 +149,19 @@
     oldal a legutóbbi {READING_LIMIT} mérést őrzi meg.
   </p>
   <div class="actions">
-    <button type="button" disabled={busy} onclick={() => download(false)}
+    <button type="button" aria-disabled={busy} onclick={() => download(false)}
       >Fogyasztási napló (PDF)</button
     >
-    <button type="button" disabled={busy} onclick={() => download(true)}
+    <button type="button" aria-disabled={busy} onclick={() => download(true)}
       >Napló és statisztikák (PDF)</button
     >
-    <button type="button" disabled={busy} onclick={() => input.click()}
-      >Visszaállítás PDF-ből</button
+    <button
+      type="button"
+      bind:this={restoreButton}
+      aria-disabled={busy}
+      onclick={() => {
+        if (!busy) input.click();
+      }}>Visszaállítás PDF-ből</button
     >
     <input
       hidden
@@ -150,7 +173,7 @@
   </div>
   {#if pending}
     <div class="restore">
-      <p>
+      <p id={`${category}-restore-summary`}>
         <strong>A mentés tartalma: {pending.description}.</strong> Visszaállításkor
         a mentés lecseréli az ezen az oldalon tárolt méréseket és beállításokat.
       </p>
@@ -160,32 +183,33 @@
         </p>
       {/if}
       <div class="actions">
-        <button type="button" disabled={busy} onclick={apply}
-          >Adatok cseréje</button
+        <button
+          type="button"
+          bind:this={cancelButton}
+          aria-describedby={`${category}-restore-summary`}
+          onclick={closeRestore}>Mégse</button
         >
         <button
           type="button"
-          onclick={() => {
-            pending = null;
-            error = "";
-          }}>Mégse</button
+          aria-disabled={busy}
+          aria-describedby={`${category}-restore-summary`}
+          onclick={apply}>Adatok cseréje</button
         >
       </div>
     </div>
   {/if}
-  {#if error}
-    <p class="feedback" role="alert">{error}</p>
-  {:else if operation}
-    <p class="feedback">
-      <strong role="status"
-        >{operation === "generate"
-          ? "PDF generálása folyamatban."
-          : "PDF beolvasása folyamatban."}</strong
-      >
-      <span>{pdfStatusMessages[statusIndex]}</span>
-    </p>
-  {:else if message}
-    <p class="feedback" role="status">{message}</p>
+  <p class="feedback" role="alert">{error}</p>
+  <p class="feedback" role="status">
+    {operation === "generate"
+      ? "PDF generálása folyamatban."
+      : operation === "read"
+        ? "PDF beolvasása folyamatban."
+        : pending
+          ? "A PDF adatai készen állnak a visszaállításra."
+          : message}
+  </p>
+  {#if operation}
+    <p aria-hidden="true">{pdfStatusMessages[statusIndex]}</p>
   {/if}
 </section>
 
@@ -217,10 +241,10 @@
     font-size: 0.85rem;
     cursor: pointer;
   }
-  .actions button:hover:not(:disabled) {
+  .actions button:hover:not([aria-disabled="true"]) {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
-  .actions button:disabled {
+  .actions button[aria-disabled="true"] {
     opacity: 0.55;
     cursor: wait;
   }
@@ -232,5 +256,8 @@
   }
   .feedback {
     margin-top: 0.7rem;
+  }
+  .feedback:empty {
+    margin: 0;
   }
 </style>

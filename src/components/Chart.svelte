@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { Reading } from "../types";
+  import { fmt } from "../lib/format";
   let {
     id,
     kind = "consumption",
@@ -19,6 +20,7 @@
   let canvas: HTMLCanvasElement,
     visible = $state(false),
     failed = $state(false);
+  let showData = $state(false);
   onMount(() => {
     if (!("IntersectionObserver" in window)) {
       visible = true;
@@ -60,9 +62,53 @@
   });
 </script>
 
-<div class="chart" class:benchmark-chart={kind === "benchmark"}>
-  <canvas {id} bind:this={canvas} aria-label={label}>{label}</canvas>
+<div
+  class="chart"
+  class:benchmark-chart={kind === "benchmark"}
+  role="img"
+  aria-label={label}
+>
+  <canvas {id} bind:this={canvas} aria-hidden="true"></canvas>
 </div>
-{#if failed}<p class="field-hint">
-    A grafikon nem tölthető be. A számokat a kártyákon és a naplóban találod.
-  </p>{/if}
+{#if failed}<p class="field-hint">A grafikon nem tölthető be.</p>{/if}
+{#if readings.length || bars.length}
+  <details
+    class="chart-data"
+    ontoggle={(event) => (showData = event.currentTarget.open)}
+  >
+    <summary>A grafikon adatai szövegesen</summary>
+    {#if showData}
+      <ul>
+        {#if kind === "benchmark"}
+          {#each bars as bar, index (index)}
+            <li>{bar.label} · {fmt(bar.value)} {unit}</li>
+          {/each}
+        {:else}
+          {#each readings as reading (reading.id)}
+            <li>
+              {reading.date} · {fmt(reading.value - readings[0].value)}
+              {unit}
+            </li>
+          {/each}
+        {/if}
+      </ul>
+    {/if}
+  </details>
+{/if}
+
+<style>
+  .chart-data {
+    margin-block: 8px;
+    color: var(--muted);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+  }
+  summary {
+    cursor: pointer;
+    min-height: 32px;
+    padding-block: 5px;
+  }
+  ul {
+    padding-inline-start: 1.5em;
+  }
+</style>

@@ -4,10 +4,7 @@
 </script>
 
 <header class="site-header shell">
-  <a
-    class="brand"
-    href={electricity ? "./aram.html" : "./index.html"}
-    aria-label="RezsiPont kezdőlap"
+  <a class="brand" href={electricity ? "./aram.html" : "./index.html"}
     ><span class="brand-mark" aria-hidden="true"
       ><svg viewBox="0 0 24 24"
         >{#if electricity}<path d="m14 2-9 12h6l-1 8 9-12h-6Z" />{:else}<path

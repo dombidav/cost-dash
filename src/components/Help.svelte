@@ -19,15 +19,17 @@
 
   function position() {
     if (!open) return;
-    const anchor = button.getBoundingClientRect(),
-      box = panel.getBoundingClientRect();
+    const anchor = button.getBoundingClientRect();
     const width = document.documentElement.clientWidth,
       height = window.innerHeight;
+    const bottomEdge = Math.max(8, Math.min(anchor.bottom, height - 8));
+    const topEdge = Math.max(8, Math.min(anchor.top, height - 8));
+    const below = Math.max(0, height - bottomEdge - 8);
+    const above = Math.max(0, topEdge - 8);
+    panel.style.maxHeight = `${Math.max(below, above)}px`;
+    const box = panel.getBoundingClientRect();
     left = Math.max(12, Math.min(anchor.left - 8, width - box.width - 12));
-    top =
-      anchor.bottom + 8 + box.height <= height - 12
-        ? anchor.bottom + 8
-        : Math.max(12, anchor.top - box.height - 8);
+    top = box.height <= below ? bottomEdge : topEdge - box.height;
   }
   function show() {
     clearTimeout(closeTimer);
@@ -40,6 +42,7 @@
   function close() {
     clearTimeout(closeTimer);
     pinned = false;
+    hovered = false;
     open = false;
     panel?.hidePopover();
   }
@@ -61,9 +64,7 @@
     if (event.key === "Escape" && open) close();
   }}
   onresize={position}
-  onscroll={() => {
-    if (open) close();
-  }}
+  onscroll={position}
 />
 <button
   bind:this={button}
@@ -73,6 +74,7 @@
   aria-label={`${label} – súgó`}
   aria-expanded={open}
   aria-controls={`${forId}-help`}
+  aria-describedby={`${forId}-help`}
   onpointerenter={(event) => {
     if (event.pointerType !== "touch") {
       hovered = true;

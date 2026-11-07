@@ -328,7 +328,7 @@
         id="gas-benchmark"
         kind="benchmark"
         {bars}
-        label={bars.map((b) => `${b.label}: ${fmt(b.value)} m³/év`).join(". ")}
+        label="Éves gázfogyasztás összehasonlítása"
       />
       <p class="stat-change">
         {result.nationalChange !== null

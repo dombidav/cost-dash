@@ -46,12 +46,12 @@
         autocomplete="off"
         onblur={commit}
         aria-invalid={!!error}
-        aria-describedby={`${id}-help${error ? ` ${id}-error` : ""}`}
-      />{#if unit}<span>{unit}</span>{/if}
+        aria-describedby={`${unit ? `${id}-unit ` : ""}${id}-help${error ? ` ${id}-error` : ""}`}
+      />{#if unit}<span id={`${id}-unit`}>{unit}</span>{/if}
     </div>
     {#if hiddenLabel}<Help forId={id} {label} content={help} />{/if}
   </div>
-  {#if error}<p id={`${id}-error`} class="field-error" role="alert">
-      {error}
-    </p>{/if}
+  <p id={`${id}-error`} class="field-error" role="alert">
+    {error}
+  </p>
 </div>

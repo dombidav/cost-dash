@@ -2,18 +2,14 @@ export const ui = $state({
   status: "Helyi mentés bekapcsolva",
   storageError: false,
   message: "",
-  undo: null as (() => void) | null,
+  undo: null as { message: string; action: () => void; focusId: string } | null,
 });
 let timer: ReturnType<typeof setTimeout>;
-export function toast(message: string, undo: (() => void) | null = null) {
+export function toast(message: string, undo?: () => void, focusId = "main") {
   clearTimeout(timer);
   ui.message = message;
-  ui.undo = undo;
-  timer = setTimeout(
-    () => {
-      ui.message = "";
-      ui.undo = null;
-    },
-    undo ? 15000 : 4500,
-  );
+  if (undo) ui.undo = { message, action: undo, focusId };
+  timer = setTimeout(() => {
+    ui.message = "";
+  }, 4500);
 }

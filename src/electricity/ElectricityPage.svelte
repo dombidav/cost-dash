@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import Help from "../components/Help.svelte";
   import { A2_PEAK_HELP } from "../lib/field-help";
   import TariffGuide from "./TariffGuide.svelte";
@@ -10,6 +11,7 @@
     createPoint,
     validatePoint,
     validateReading,
+    readingError,
     annual,
     total,
     periodResult,
@@ -60,11 +62,12 @@
     ].sort((a, b) => b - a),
   );
   let draft = $state({ date: today(), peak: "", off: "" }),
-    formError = $state("");
+    formError = $state<ReturnType<typeof readingError>>();
   let readingInput = $state<HTMLInputElement>();
   $effect(() => {
-    draft = { ...point.draft };
-    formError = "";
+    const selectedPoint = point;
+    draft = untrack(() => ({ ...selectedPoint.draft }));
+    formError = undefined;
   });
   let annualRows = $derived(
     model.points.map((point) => ({ point, annual: annual(point, model.year) })),
@@ -247,13 +250,17 @@
     model.points = model.points.filter((p) => p.id !== removed.id);
     model.selected = model.points[0].id;
     save();
-    toast("Mérési pont eltávolítva.", () => {
-      if (model.points.some((p) => p.id === removed.id)) return;
-      model.points.splice(index, 0, removed);
-      model.selected = removed.id;
-      save();
-      toast("Mérési pont visszaállítva.");
-    });
+    toast(
+      "Mérési pont eltávolítva.",
+      () => {
+        if (model.points.some((p) => p.id === removed.id)) return;
+        model.points.splice(index, 0, removed);
+        model.selected = removed.id;
+        save();
+        toast("Mérési pont visszaállítva.");
+      },
+      "electricity-point-select",
+    );
   }
   function saveDraft() {
     point.draft = {
@@ -271,7 +278,7 @@
       peak: parseNumber(draft.peak),
       off: point.tariff === "A2" ? parseNumber(draft.off) : null,
     };
-    formError = validateReading(point, row);
+    formError = readingError(point, row);
     if (formError) return;
     point.readings.push(row);
     model.year = yearFor(row.date);
@@ -307,27 +314,31 @@
       row = { ...point.readings.find((r) => r.id === id)! };
     point.readings = point.readings.filter((r) => r.id !== id);
     save();
-    toast("Mérés törölve.", () => {
-      const p = model.points.find((p) => p.id === pId);
-      if (!p) {
-        toast("A mérési pont már nincs a listában.");
-        return;
-      }
-      const error = validateReading(p, row, false);
-      if (error) {
-        toast(error);
-        return;
-      }
-      p.readings.push(row);
-      model.selected = p.id;
-      model.year = yearFor(row.date);
-      save();
-      toast(
-        p.readings.some((item) => item.id === row.id)
-          ? "Mérés visszaállítva."
-          : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
-      );
-    });
+    toast(
+      "Mérés törölve.",
+      () => {
+        const p = model.points.find((p) => p.id === pId);
+        if (!p) {
+          toast("A mérési pont már nincs a listában.");
+          return;
+        }
+        const error = validateReading(p, row, false);
+        if (error) {
+          toast(error);
+          return;
+        }
+        p.readings.push(row);
+        model.selected = p.id;
+        model.year = yearFor(row.date);
+        save();
+        toast(
+          p.readings.some((item) => item.id === row.id)
+            ? "Mérés visszaállítva."
+            : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+        );
+      },
+      "electricity-history-title",
+    );
   }
   function opening() {
     draft.date = yearly.activeStart;
@@ -569,7 +580,7 @@
           <label for="electricity-reading-peak"
             >{point.tariff === "A2"
               ? "Csúcsidős regiszter állása"
-              : "Mérőállás"}</label
+              : "Mérőállás"} · kWh</label
           ><Help
             forId="electricity-reading-peak"
             label={point.tariff === "A2"
@@ -581,19 +592,21 @@
         <div class="input-unit meter-input">
           <input
             id="electricity-reading-peak"
-            aria-describedby="electricity-reading-peak-help electricity-reading-error"
+            aria-required="true"
+            aria-invalid={formError?.field === "peak"}
+            aria-describedby={`electricity-reading-peak-help${formError?.field === "peak" ? " electricity-reading-error" : ""}`}
             type="text"
             inputmode="decimal"
             bind:this={readingInput}
             bind:value={draft.peak}
             placeholder="pl. 12 450,5"
             onblur={saveDraft}
-            oninput={() => (formError = "")}
-          /><span>kWh</span>
+            oninput={() => (formError = undefined)}
+          /><span aria-hidden="true">kWh</span>
         </div>
         {#if point.tariff === "A2"}<div class="field-label">
             <label for="electricity-reading-off"
-              >Völgyidős regiszter állása</label
+              >Völgyidős regiszter állása · kWh</label
             ><Help
               forId="electricity-reading-off"
               label="Völgyidős regiszter állása"
@@ -602,13 +615,15 @@
           <div class="input-unit">
             <input
               id="electricity-reading-off"
-              aria-describedby="electricity-reading-off-help"
+              aria-required="true"
+              aria-invalid={formError?.field === "off"}
+              aria-describedby={`electricity-reading-off-help${formError?.field === "off" ? " electricity-reading-error" : ""}`}
               type="text"
               inputmode="decimal"
               bind:value={draft.off}
               onblur={saveDraft}
-              oninput={() => (formError = "")}
-            /><span>kWh</span>
+              oninput={() => (formError = undefined)}
+            /><span aria-hidden="true">kWh</span>
           </div>{/if}
         <p class="field-hint">
           A teljes vételezési állás, nem az időszaki fogyasztás. A2-nél mindkét
@@ -624,19 +639,19 @@
         </div>
         <input
           id="electricity-reading-date"
-          aria-describedby="electricity-reading-date-help"
+          aria-required="true"
+          aria-invalid={formError?.field === "date"}
+          aria-describedby={`electricity-reading-date-help${formError?.field === "date" ? " electricity-reading-error" : ""}`}
           type="text"
           maxlength="10"
           bind:value={draft.date}
           onblur={saveDraft}
-          oninput={() => (formError = "")}
-        />{#if formError}<p
-            class="field-error"
-            id="electricity-reading-error"
-            role="alert"
-          >
-            {formError}
-          </p>{/if}<button class="primary-button" type="submit"
+          oninput={() => (formError = undefined)}
+        />
+        <p class="field-error" id="electricity-reading-error" role="alert">
+          {formError?.message ?? ""}
+        </p>
+        <button class="primary-button" type="submit"
           ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
           ></button
         >
@@ -860,9 +875,7 @@
       kind="benchmark"
       unit="kWh"
       bars={aggregateBars}
-      label={aggregateBars
-        .map((b) => `${b.label}: ${fmt(b.value)} kWh`)
-        .join(". ")}
+      label="A mérési pontok időszaki áramfogyasztása"
     />{/if}
   <div class="point-summaries">
     {#each allRows as row (row.point.id)}<article

@@ -103,21 +103,41 @@ export function validateReading(
   r: ElectricityReading,
   requireOff = p.tariff === "A2",
 ) {
+  return readingError(p, r, requireOff)?.message ?? "";
+}
+export function readingError(
+  p: ElectricityPoint,
+  r: ElectricityReading,
+  requireOff = p.tariff === "A2",
+): { field: "date" | "peak" | "off"; message: string } | undefined {
   if (!validDate(r.date))
-    return "Adj meg érvényes dátumot ÉÉÉÉ-HH-NN formátumban.";
-  if (r.date > today()) return "Jövőbeli mérőállás nem rögzíthető.";
+    return {
+      field: "date",
+      message: "Adj meg érvényes dátumot ÉÉÉÉ-HH-NN formátumban.",
+    };
+  if (r.date > today())
+    return { field: "date", message: "Jövőbeli mérőállás nem rögzíthető." };
+  if (!Number.isFinite(r.peak) || r.peak < 0 || r.peak > 1e12)
+    return {
+      field: "peak",
+      message: "Adj meg 0 és 1 000 000 000 000 közötti mérőállást kWh-ban.",
+    };
   if (
-    !Number.isFinite(r.peak) ||
-    r.peak < 0 ||
-    r.peak > 1e12 ||
-    (r.off !== null &&
-      (!Number.isFinite(r.off) || r.off < 0 || r.off > 1e12)) ||
-    (requireOff && r.off === null)
+    r.off === null
+      ? requireOff
+      : !Number.isFinite(r.off) || r.off < 0 || r.off > 1e12
   )
-    return "Adj meg érvényes, nemnegatív mérőállást; A2-nél mindkét regiszter szükséges.";
+    return {
+      field: "off",
+      message:
+        "A völgyidős regiszter állása 0 és 1 000 000 000 000 közötti szám lehet.",
+    };
   const others = sortByDate(p.readings).filter((x) => x.id !== r.id);
   if (others.some((x) => x.date === r.date))
-    return "Erre a napra már van mérés. Szerkeszd a naplóban a meglévőt.";
+    return {
+      field: "date",
+      message: "Erre a napra már van mérés. Szerkeszd a naplóban a meglévőt.",
+    };
   const before = others.filter((x) => x.date < r.date).at(-1),
     after = others.find((x) => x.date > r.date);
   for (const field of ["peak", "off"] as const) {
@@ -125,11 +145,16 @@ export function validateReading(
     if (value === null) continue;
     const label = field === "off" ? "A völgyregiszter" : "A mérőállás";
     if (before && before[field] !== null && value < before[field]!)
-      return `${label} nem lehet kisebb a korábbi (${before.date}: ${before[field]} kWh) értéknél.`;
+      return {
+        field,
+        message: `${label} nem lehet kisebb a korábbi (${before.date}: ${before[field]} kWh) értéknél.`,
+      };
     if (after && after[field] !== null && value > after[field]!)
-      return `${label} nem lehet nagyobb a későbbi (${after.date}: ${after[field]} kWh) értéknél.`;
+      return {
+        field,
+        message: `${label} nem lehet nagyobb a későbbi (${after.date}: ${after[field]} kWh) értéknél.`,
+      };
   }
-  return "";
 }
 export function validatePoint(p: ElectricityPoint) {
   if (!p.name.trim() || p.name.length > 80)

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import Field from "./Field.svelte";
   import Chart from "./Chart.svelte";
   import { A2_PEAK_HELP } from "../lib/field-help";
@@ -37,6 +38,7 @@
   const pageSize = 12;
   let expanded = $state(false);
   let page = $state(1);
+  let pageStatus = $state<HTMLSpanElement>();
   let ordered = $derived(sortByDate(rows));
   let pageCount = $derived(Math.max(1, Math.ceil(ordered.length / pageSize)));
   let currentPage = $derived(Math.min(page, pageCount));
@@ -52,9 +54,13 @@
       .reverse(),
   );
 
-  function toggleExpanded() {
+  async function toggleExpanded() {
     page = 1;
     expanded = !expanded;
+    if (expanded) {
+      await tick();
+      pageStatus?.focus();
+    }
   }
 
   let chartData = $derived(
@@ -71,7 +77,7 @@
   <div class="history-heading">
     <div>
       <div class="card-heading">
-        <h2>Mérési napló</h2>
+        <h2 id={`${id}-title`} tabindex="-1">Mérési napló</h2>
         <span class="count">{rows.length} mérés</span>
       </div>
       <p class="section-intro">
@@ -109,32 +115,46 @@
       A pontok mérések, a köztük húzott vonal szemléltetés.
     </p>
     <div class="history-table-wrap" id={`${id}-table`}>
-      <table>
-        <caption class="sr-only">Szerkeszthető mérési napló</caption><thead
-          ><tr
-            ><th>Dátum</th>{#each columns as column (column)}<th
-                >{column} / {unit}</th
-              >{/each}<th>Fogyasztás / {unit}</th><th
+      <!-- svelte-ignore a11y_no_redundant_roles (Preserve table semantics when mobile CSS changes display.) -->
+      <table role="table">
+        <caption class="sr-only">Szerkeszthető mérési napló</caption>
+        <thead>
+          <tr
+            ><th scope="col" role="columnheader">Dátum</th
+            >{#each columns as column (column)}<th
+                scope="col"
+                role="columnheader">{column} / {unit}</th
+              >{/each}<th scope="col" role="columnheader"
+              >Fogyasztás / {unit}</th
+            ><th scope="col" role="columnheader"
               ><span class="sr-only">Műveletek</span></th
             ></tr
-          ></thead
-        ><tbody>
+          >
+        </thead>
+        <!-- svelte-ignore a11y_no_redundant_roles (The body is a block on mobile.) -->
+        <tbody role="rowgroup">
           {#each visibleRows as row, rowIndex (row.id)}
             {@const previous = ordered[pageEnd - rowIndex - 2]}
-            <tr
-              ><td data-label="Dátum"
-                ><Field
+            <!-- svelte-ignore a11y_no_redundant_roles (Rows are grids on mobile.) -->
+            <tr role="row">
+              <td role="cell">
+                <span class="history-cell-label" aria-hidden="true">Dátum</span>
+                <Field
                   id={`${id}-${row.id}-date`}
                   label={`${row.date} mérés dátuma`}
                   value={row.date}
                   hiddenLabel
                   oncommit={(value) => onedit(row.id, "date", value)}
-                /></td
-              >{#each columns as column, columnIndex (column)}<td
-                  data-label={`${column} · ${unit}`}
-                  ><Field
+                />
+              </td>
+              {#each columns as column, columnIndex (column)}
+                <td role="cell">
+                  <span class="history-cell-label" aria-hidden="true"
+                    >{column} · {unit}</span
+                  >
+                  <Field
                     id={`${id}-${row.id}-${columnIndex}`}
-                    label={`${row.date} ${column}`}
+                    label={`${row.date} ${column} · ${unit}`}
                     value={row.values[columnIndex]}
                     help={unit === "kWh" &&
                     columns.length === 2 &&
@@ -144,54 +164,71 @@
                     decimal
                     hiddenLabel
                     oncommit={(value) => onedit(row.id, columnIndex, value)}
-                  /></td
-                >{/each}<td class="consumption-cell" data-label="Fogyasztás"
-                >{previous && row.total !== null && previous.total !== null
+                  />
+                </td>
+              {/each}
+              <td role="cell" class="consumption-cell">
+                <span class="history-cell-label" aria-hidden="true"
+                  >Fogyasztás · {unit}</span
+                >
+                {previous && row.total !== null && previous.total !== null
                   ? `+${fmt(row.total - previous.total)}`
                   : "—"}<small
                   >{previous
                     ? `${days(previous.date, row.date)} nap alatt`
                     : "Kezdőállás"}</small
-                ></td
-              ><td class="row-actions"
-                ><button
+                >
+              </td>
+              <td role="cell" class="row-actions">
+                <button
                   class="delete-button"
                   type="button"
                   aria-label={`${row.date} mérés törlése`}
                   onclick={() => onremove(row.id)}>×</button
-                ></td
-              ></tr
-            >{/each}
+                >
+              </td>
+            </tr>
+          {/each}
         </tbody>
       </table>
     </div>
     {#if expanded}
       <nav class="history-pagination" aria-label="A mérési napló oldalai">
-        <span role="status">{currentPage}. oldal, összesen {pageCount}</span>
+        <span role="status" tabindex="-1" bind:this={pageStatus}
+          >{currentPage}. oldal, összesen {pageCount}</span
+        >
         <div class="page-buttons">
           <button
             type="button"
             aria-label="Első oldal"
-            disabled={currentPage === 1}
-            onclick={() => (page = 1)}>Első</button
+            aria-disabled={currentPage === 1}
+            onclick={() => {
+              if (currentPage > 1) page = 1;
+            }}>Első</button
           >
           <button
             type="button"
             aria-label="Előző oldal"
-            disabled={currentPage === 1}
-            onclick={() => (page = currentPage - 1)}>Előző</button
+            aria-disabled={currentPage === 1}
+            onclick={() => {
+              if (currentPage > 1) page = currentPage - 1;
+            }}>Előző</button
           >
           <button
             type="button"
             aria-label="Következő oldal"
-            disabled={currentPage === pageCount}
-            onclick={() => (page = currentPage + 1)}>Következő</button
+            aria-disabled={currentPage === pageCount}
+            onclick={() => {
+              if (currentPage < pageCount) page = currentPage + 1;
+            }}>Következő</button
           >
           <button
             type="button"
             aria-label="Utolsó oldal"
-            disabled={currentPage === pageCount}
-            onclick={() => (page = pageCount)}>Utolsó</button
+            aria-disabled={currentPage === pageCount}
+            onclick={() => {
+              if (currentPage < pageCount) page = pageCount;
+            }}>Utolsó</button
           >
         </div>
       </nav>
@@ -229,17 +266,19 @@
   .page-buttons button {
     min-height: 38px;
     padding: 6px 10px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--control-border);
     border-radius: 8px;
     background: transparent;
     color: var(--accent);
     font-size: 12px;
   }
-  .page-buttons button:enabled:hover {
+  .page-buttons button[aria-disabled="false"]:hover {
     border-color: var(--accent);
   }
-  .page-buttons button:disabled {
+  .page-buttons button[aria-disabled="true"] {
     cursor: default;
+    color: var(--muted);
+    border-color: var(--border);
   }
   .history-toggle {
     min-height: 40px;

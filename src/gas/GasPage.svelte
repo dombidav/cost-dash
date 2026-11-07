@@ -4,6 +4,7 @@
     allowanceBetween,
     calculateBilling,
     calculateGasYear,
+    readingError,
     validateBilling,
     validateReading,
   } from "../calculator";
@@ -33,7 +34,7 @@
   let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
   let draft = $state({ ...disk.data.draft }),
-    formError = $state("");
+    formError = $state<ReturnType<typeof readingError>>();
   let meterInput = $state<HTMLInputElement>();
   let annual = $derived(
     calculateGasYear(model.settings, model.readings, model.year),
@@ -148,7 +149,7 @@
       date: draft.date,
       value: parseNumber(draft.value),
     };
-    formError = validateReading(reading, model.readings);
+    formError = readingError(reading, model.readings);
     if (formError) return;
     model.readings.push(reading);
     model.year = yearFor(reading.date);
@@ -179,21 +180,25 @@
     const row = { ...model.readings.find((r) => r.id === id)! };
     model.readings = model.readings.filter((r) => r.id !== id);
     save();
-    toast("Mérés törölve.", () => {
-      const error = validateReading(row, model.readings);
-      if (error) {
-        toast(error);
-        return;
-      }
-      model.readings.push(row);
-      model.year = yearFor(row.date);
-      save();
-      toast(
-        model.readings.some((item) => item.id === row.id)
-          ? "Mérés visszaállítva."
-          : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
-      );
-    });
+    toast(
+      "Mérés törölve.",
+      () => {
+        const error = validateReading(row, model.readings);
+        if (error) {
+          toast(error);
+          return;
+        }
+        model.readings.push(row);
+        model.year = yearFor(row.date);
+        save();
+        toast(
+          model.readings.some((item) => item.id === row.id)
+            ? "Mérés visszaállítva."
+            : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+        );
+      },
+      "gas-history-title",
+    );
   }
   function opening() {
     draft.date = annual.start;
@@ -341,7 +346,7 @@
     </div>
     <form onsubmit={add}>
       <div class="field-label">
-        <label for="gas-reading">Gázóra állása</label><Help
+        <label for="gas-reading">Gázóra állása · m³</label><Help
           forId="gas-reading"
           label="Gázóra állása"
         />
@@ -349,15 +354,17 @@
       <div class="input-unit meter-input">
         <input
           id="gas-reading"
-          aria-describedby="gas-reading-help gas-reading-error"
+          aria-required="true"
+          aria-invalid={formError?.field === "value"}
+          aria-describedby={`gas-reading-help${formError?.field === "value" ? " gas-reading-error" : ""}`}
           bind:this={meterInput}
           bind:value={draft.value}
           inputmode="decimal"
           type="text"
           placeholder="pl. 12 450,5"
           onblur={saveDraft}
-          oninput={() => (formError = "")}
-        /><span>m³</span>
+          oninput={() => (formError = undefined)}
+        /><span aria-hidden="true">m³</span>
       </div>
       <p class="field-hint">A mérőn látható teljes állás, nem a fogyasztás.</p>
       <div class="field-label">
@@ -368,19 +375,19 @@
       </div>
       <input
         id="gas-date"
-        aria-describedby="gas-date-help gas-reading-error"
+        aria-required="true"
+        aria-invalid={formError?.field === "date"}
+        aria-describedby={`gas-date-help${formError?.field === "date" ? " gas-reading-error" : ""}`}
         type="text"
         bind:value={draft.date}
         onblur={saveDraft}
         maxlength="10"
-        oninput={() => (formError = "")}
-      />{#if formError}<p
-          id="gas-reading-error"
-          class="field-error"
-          role="alert"
-        >
-          {formError}
-        </p>{/if}<button class="primary-button" type="submit"
+        oninput={() => (formError = undefined)}
+      />
+      <p id="gas-reading-error" class="field-error" role="alert">
+        {formError?.message ?? ""}
+      </p>
+      <button class="primary-button" type="submit"
         ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
         ></button
       >
@@ -659,7 +666,7 @@
     if (!disk.save(data)) return false;
     model = data;
     draft = { ...data.draft };
-    formError = "";
+    formError = undefined;
     return true;
   }}
 />
