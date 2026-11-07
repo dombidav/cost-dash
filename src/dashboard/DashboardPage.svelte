@@ -7,6 +7,7 @@
   import { categories } from "../lib/pages";
   import DataCoverage from "./DataCoverage.svelte";
   import MonthComparison from "./MonthComparison.svelte";
+  import MonthlyBudget from "./MonthlyBudget.svelte";
   import MonthlyPlan from "./MonthlyPlan.svelte";
   import UpcomingPayments from "./UpcomingPayments.svelte";
   import {
@@ -27,6 +28,11 @@
   let monthIndex = $state(currentIndex);
   let years = $derived(reportYears(sources, now));
   let months = $derived(reports(sources, year, now));
+  let budgetMonth = $derived(
+    (year === currentYear ? months : reports(sources, currentYear, now)).at(
+      -1,
+    )!,
+  );
   let showPrevious = $state(false);
   let previousMonths = $derived(
     reports(sources, year - 1, now).slice(0, months.length),
@@ -271,6 +277,7 @@
 
   <UpcomingPayments {sources} {now} />
   <MonthlyPlan {sources} {now} />
+  <MonthlyBudget row={budgetMonth} {sources} {now} />
 
   <section class="card" aria-labelledby="dashboard-trend">
     <h2 id="dashboard-trend">Havi alakulás · {year}</h2>
