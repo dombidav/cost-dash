@@ -461,24 +461,6 @@
     }}
   />
 </section>
-<PdfActions
-  category="electricity"
-  getData={() => $state.snapshot(model)}
-  report={electricityReport}
-  limit={limitReadings}
-  {removedReadings}
-  parse={(value) => {
-    const parsed = migrateState(value);
-    return validState(parsed) ? parsed : null;
-  }}
-  describe={(data) =>
-    `${data.points.length} mérési pont, ${data.points.reduce((sum, point) => sum + point.readings.length, 0)} árammérés`}
-  onrestore={(data: ElectricityState) => {
-    if (!disk.save(data)) return false;
-    model = data;
-    return true;
-  }}
-/>
 <section class="card point-picker" id="electricity-point">
   <Select
     id="electricity-point-select"
@@ -942,6 +924,7 @@
   <ReadingLog
     id="electricity-history"
     unit="kWh"
+    {removedReadings}
     rows={yearly.items.map((r) => ({
       id: r.id,
       date: r.date,
@@ -1057,3 +1040,20 @@
     </div>
   </div>
 </details>
+<PdfActions
+  category="electricity"
+  getData={() => $state.snapshot(model)}
+  report={electricityReport}
+  limit={limitReadings}
+  parse={(value) => {
+    const parsed = migrateState(value);
+    return validState(parsed) ? parsed : null;
+  }}
+  describe={(data) =>
+    `${data.points.length} mérési pont, ${data.points.reduce((sum, point) => sum + point.readings.length, 0)} árammérés`}
+  onrestore={(data: ElectricityState) => {
+    if (!disk.save(data)) return false;
+    model = data;
+    return true;
+  }}
+/>

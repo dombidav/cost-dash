@@ -11,7 +11,6 @@
     report,
     parse,
     limit,
-    removedReadings,
     describe,
     onrestore,
   }: {
@@ -20,7 +19,6 @@
     report: (data: T, detailed: boolean) => Report;
     parse: (data: unknown) => T | null;
     limit: (data: T) => number;
-    removedReadings: number;
     describe: (data: T) => string;
     onrestore: (data: T) => boolean;
   } = $props();
@@ -129,16 +127,9 @@
 <section class="card pdf-actions" aria-label="PDF exportálás és visszaállítás">
   <h2>PDF exportálás és visszaállítás</h2>
   <p>
-    Ezen az oldalon összesen {READING_LIMIT} mérés fér el. Ha betelik a napló, a legrégebbi
-    mérések kiesnek. Mindkét PDF tartalmazza a megmaradt méréseket és a visszaállítható
-    adatcsatolmányt. A statisztikák a kiválasztott kedvezményes évre vonatkoznak.
+    Mentsd el a méréseidet PDF-ben, hogy később is visszaállíthasd őket. Az
+    oldal a legutóbbi {READING_LIMIT} mérést őrzi meg.
   </p>
-  {#if removedReadings}
-    <p class="feedback" role="status">
-      A napló elérte a határt. A legrégebbi mérések közül {removedReadings} kikerült
-      a naplóból.
-    </p>
-  {/if}
   <div class="actions">
     <button type="button" disabled={busy} onclick={() => download(false)}
       >Fogyasztási napló (PDF)</button

@@ -9,6 +9,7 @@
     rows,
     unit,
     columns,
+    removedReadings,
     onedit,
     onremove,
     onopening,
@@ -22,6 +23,7 @@
     }[];
     unit: string;
     columns: string[];
+    removedReadings: number;
     onedit: (
       id: string,
       field: number | "date",
@@ -81,6 +83,11 @@
       >Évkezdő állás megadása ↗</button
     >
   </div>
+  {#if removedReadings}
+    <p class="notice" role="status">
+      A napló megtelt, ezért a legrégebbi mérések közül {removedReadings} kiesett.
+    </p>
+  {/if}
   {#if !rows.length}<div class="empty-state">
       <span class="empty-icon" aria-hidden="true">＋</span>
       <h3>Az első méréseddel kezdődik.</h3>

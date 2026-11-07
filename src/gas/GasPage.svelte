@@ -249,25 +249,6 @@
     }}
   />
 </section>
-<PdfActions
-  category="gas"
-  getData={() => $state.snapshot(model)}
-  report={gasReport}
-  limit={limitReadings}
-  {removedReadings}
-  parse={(value) => {
-    const parsed = migrateGas(value);
-    return validGas(parsed) ? parsed : null;
-  }}
-  describe={(data) => `${data.readings.length} gázmérés`}
-  onrestore={(data: AppState) => {
-    if (!disk.save(data)) return false;
-    model = data;
-    draft = { ...data.draft };
-    formError = "";
-    return true;
-  }}
-/>
 <section class="card mode-card">
   <Select
     id="gas-mode"
@@ -566,6 +547,7 @@
   <ReadingLog
     id="gas-history"
     unit="m³"
+    {removedReadings}
     rows={annual.items.map((r) => ({
       id: r.id,
       date: r.date,
@@ -663,3 +645,21 @@
     </div>
   </div>
 </details>
+<PdfActions
+  category="gas"
+  getData={() => $state.snapshot(model)}
+  report={gasReport}
+  limit={limitReadings}
+  parse={(value) => {
+    const parsed = migrateGas(value);
+    return validGas(parsed) ? parsed : null;
+  }}
+  describe={(data) => `${data.readings.length} gázmérés`}
+  onrestore={(data: AppState) => {
+    if (!disk.save(data)) return false;
+    model = data;
+    draft = { ...data.draft };
+    formError = "";
+    return true;
+  }}
+/>
