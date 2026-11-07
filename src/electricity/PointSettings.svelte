@@ -62,6 +62,7 @@
   class="card point-settings"
   id="electricity-settings"
   aria-labelledby="point-settings-title"
+  tabindex="-1"
 >
   <h2 id="point-settings-title">
     <button
@@ -83,6 +84,7 @@
     class="accordion-panel"
     class:is-expanded={expanded}
     id="electricity-settings-content"
+    data-section-disclosure
     aria-hidden={!expanded}
     inert={!expanded}
   >
@@ -186,7 +188,9 @@
 
         <div class="rate-overview">
           <div class="rate-heading">
-            <h3>Ezekkel a díjakkal számolunk</h3>
+            <h3 id="electricity-rates" tabindex="-1">
+              Ezekkel a díjakkal számolunk
+            </h3>
             <span class="badge neutral"
               >{customRates ? "EGYÉNI DÍJAK" : "HIVATALOS ALAPÉRTÉKEK"}</span
             >

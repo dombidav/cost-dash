@@ -7,6 +7,7 @@
   import { days, sortByDate } from "../calendar";
   let {
     id,
+    readingId,
     rows,
     unit,
     columns,
@@ -16,6 +17,7 @@
     onopening,
   }: {
     id: string;
+    readingId: string;
     rows: {
       id: string;
       date: string;
@@ -98,8 +100,8 @@
       <span class="empty-icon" aria-hidden="true">＋</span>
       <h3>Az első méréseddel kezdődik.</h3>
       <p>
-        Rögzíts két állást, és már látod a fogyasztásodat. Korábbi dátum is
-        megadható.
+        <a href={`#${readingId}`}>Rögzíts két állást</a>, és már látod a
+        fogyasztásodat. Korábbi dátum is megadható.
       </p>
     </div>{:else}
     <div class="chart-heading">

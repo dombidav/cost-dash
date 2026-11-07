@@ -74,12 +74,14 @@
   let availableTariffs = $derived(
     tariffs.filter(({ key }) => supported(area, key)),
   );
+  const unitPrice = (value: number) => `${fmt(value, 3)}\u00a0Ft/kWh`;
 </script>
 
 <section
   class="comparison-section tariff-guide"
   id="electricity-tariffs"
   aria-labelledby="tariff-guide-title"
+  tabindex="-1"
 >
   <div class="eyebrow">
     <span class="tiny-line"></span>ISMERD MEG AZ ÁRSZABÁSOD
@@ -116,8 +118,10 @@
   <details class="card tariff-prices">
     <summary>Egységárak az aktív mérő elosztói területén</summary>
     <p>
-      {AREAS[area].label} · A kalkulátor bruttó alapértékei Ft/kWh-ban. A saját mérőd
-      díjait a beállításoknál találod.
+      {AREAS[area].label} · A kalkulátor bruttó alapértékei.
+      <a href="#electricity-rates"
+        >A saját mérőd díjait a beállításoknál találod.</a
+      >
     </p>
     <dl>
       {#each availableTariffs as { key } (key)}
@@ -126,22 +130,19 @@
           <dt>{TARIFFS[key]}</dt>
           <dd>
             {#if key === "H"}
-              Fűtési idényben {fmt(rates.low, 3)} · idényen kívül kedvezményesen {fmt(
-                rates.second,
-                3,
-              )}
+              Fűtési idényben {unitPrice(rates.low)} · idényen kívül kedvezményesen
+              {unitPrice(rates.second)}
             {:else if key === "A2"}
-              Kedvezményes csúcs {fmt(rates.low, 3)} · völgy {fmt(
+              Kedvezményes csúcs {unitPrice(rates.low)} · völgy {unitPrice(
                 rates.second,
-                3,
               )}
             {:else}
-              Kedvezményes {fmt(rates.low, 3)}
+              Kedvezményes {unitPrice(rates.low)}
             {/if}
             {#if key !== "B_GEO"}
               · keret felett {rates.market === null
                 ? "változó ár"
-                : fmt(rates.market, 3)}
+                : unitPrice(rates.market)}
             {/if}
           </dd>
         </div>

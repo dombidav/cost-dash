@@ -143,7 +143,9 @@ export function readingError(
   candidate: Reading,
   readings: Reading[],
   latestDate = today(),
-): { field: "date" | "value"; message: string } | undefined {
+):
+  | { field: "date" | "value"; message: string; duplicate?: boolean }
+  | undefined {
   if (!validDate(candidate.date))
     return {
       field: "date",
@@ -164,8 +166,8 @@ export function readingError(
   if (others.some((r) => r.date === candidate.date))
     return {
       field: "date",
-      message:
-        "Erre a napra már van mérés. Módosítsd a naplóban a meglévő állást.",
+      message: "Erre a napra már van mérés.",
+      duplicate: true,
     };
   const before = others.filter((r) => r.date < candidate.date).at(-1);
   const after = others.find((r) => r.date > candidate.date);

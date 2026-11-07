@@ -220,12 +220,17 @@ export function calculateStatistics(
   const equivalentVolume = latest ? latest.volume : (bill.consumption ?? 1);
   const equivalentKwh =
     (equivalentVolume * settings.heat * settings.correction) / 3.6;
+  const equivalenceKind: "measured" | "billing" | "unit" = latest
+    ? "measured"
+    : bill.consumption === null
+      ? "unit"
+      : "billing";
   const equivalence = {
     volume: equivalentVolume,
     kwh: equivalentKwh,
     hours: equivalentKwh / stats.heaterPower,
     usefulHeat: (equivalentKwh * stats.efficiency) / 100,
-    kind: latest ? "measured" : bill.consumption === null ? "unit" : "billing",
+    kind: equivalenceKind,
   };
   const anomaly: "new" | "stable" | "increase" | "decrease" | "missing" =
     latest && previous

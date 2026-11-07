@@ -1,21 +1,35 @@
 <script lang="ts">
   let { electricity }: { electricity: boolean } = $props();
 
-  const electricityQuestions = [
+  type Question = {
+    question: string;
+    answer: string;
+    link?: { href: string; label: string };
+  };
+  const electricityQuestions: Question[] = [
     {
       question: "Hol találom a tarifámat?",
       answer:
         "A villanyszámla részletezőjén keresd az árszabást, például az A1 vagy H jelölést. A tarifát a szerződésedben is megtalálod.",
+      link: {
+        href: "#electricity-tariffs",
+        label: "Áramtarifák összehasonlítása",
+      },
     },
     {
       question: "Melyik mérőállást adjam meg A2 tarifánál?",
       answer:
         "Add meg a csúcsidős és a völgyidős állást is, ugyanarról a napról. A számlád vagy a mérő útmutatója segít azonosítani a két kijelzett értéket.",
+      link: { href: "#electricity-reading-peak", label: "Mérőállás rögzítése" },
     },
     {
       question: "Hogyan követhetem több mérő fogyasztását?",
       answer:
-        "Az „Új mérési pont” gombbal add hozzá a következő mérőt. Mindegyikhez külön tarifát és mérőállásokat adhatsz meg, a közös összesítőben pedig együtt is láthatod a fogyasztásukat.",
+        "Mindegyik mérőhöz külön tarifát és mérőállásokat adhatsz meg. Ha több mérőt felvettél, a közös összesítőben együtt is láthatod a fogyasztásukat.",
+      link: {
+        href: "#electricity-add-point",
+        label: "Ugrás az új mérési ponthoz",
+      },
     },
     {
       question: "Mi a különbség a kW és a kWh között?",
@@ -24,25 +38,28 @@
     },
   ];
 
-  const gasQuestions = [
+  const gasQuestions: Question[] = [
     {
       question: "Mit írjak be gázóraállásnak?",
       answer:
         "A mérőn látható teljes állást add meg köbméterben. Az időszaki fogyasztást az oldal két rögzített állás különbségéből számolja.",
+      link: { href: "#gas-reading", label: "Gázóraállás rögzítése" },
     },
     {
       question: "Hol találom a fűtőértéket és a korrekciós tényezőt?",
       answer:
         "A gázszámla részletezőjén keresd a „Fűtőérték” és a „Korrekciós tényező” sorokat. Ezekkel számolja át a kalkulátor a köbmétert energiára.",
+      link: { href: "#gas-heat", label: "Ugrás a számlaadatokhoz" },
     },
     {
       question: "Milyen időszakot mutat az éves összesítő?",
       answer:
         "A kiválasztott kedvezményes évet mutatja augusztus 1-jétől a következő július végéig. Ha nincs kezdőnapi mérésed, a hiányzó fogyasztást havi súlyozással becsüljük, amint van hozzá elég adat.",
+      link: { href: "#gas-year", label: "Kedvezményes év kiválasztása" },
     },
   ];
 
-  const siteQuestions = [
+  const siteQuestions: Question[] = [
     {
       question: "Hol maradnak a megadott adataim?",
       answer:
@@ -92,7 +109,10 @@
               aria-hidden="true">＋</span
             ></summary
           >
-          <p>{item.answer}</p>
+          <p>
+            {item.answer}
+            {#if item.link}<a href={item.link.href}>{item.link.label}</a>{/if}
+          </p>
         </details>
       {/each}
     </div>

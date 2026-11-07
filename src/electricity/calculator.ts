@@ -112,7 +112,9 @@ export function readingError(
   p: ElectricityPoint,
   r: ElectricityReading,
   requireOff = p.tariff === "A2",
-): { field: "date" | "peak" | "off"; message: string } | undefined {
+):
+  | { field: "date" | "peak" | "off"; message: string; duplicate?: boolean }
+  | undefined {
   if (!validDate(r.date))
     return {
       field: "date",
@@ -139,7 +141,8 @@ export function readingError(
   if (others.some((x) => x.date === r.date))
     return {
       field: "date",
-      message: "Erre a napra már van mérés. Szerkeszd a naplóban a meglévőt.",
+      message: "Erre a napra már van mérés.",
+      duplicate: true,
     };
   const before = others.filter((x) => x.date < r.date).at(-1),
     after = others.find((x) => x.date > r.date);
@@ -415,6 +418,32 @@ function interval(
   if (!a || !b || total(p, a) === null || total(p, b) === null) return null;
   return consumptionInterval(a.date, b.date, total(p, b)! - total(p, a)!);
 }
+
+export function recentConsumption(p: ElectricityPoint, end = today()) {
+  const start = addDays(end, -30);
+  const readings = sortByDate(
+    p.readings.filter((r) => r.date <= end && total(p, r) !== null),
+  );
+  const index = readings.findIndex((r) => r.date >= start);
+  if (index < 0) return null;
+
+  const first = readings[index];
+  const last = readings.at(-1)!;
+  const observed = interval(p, first, last);
+  const crossing =
+    first.date > start ? interval(p, readings[index - 1], first) : null;
+  if (!observed && !crossing) return null;
+
+  return {
+    start: crossing ? start : first.date,
+    end: last.date,
+    volume:
+      (observed?.volume ?? 0) +
+      (crossing ? crossing.average * days(start, first.date) : 0),
+    estimated: crossing !== null,
+  };
+}
+
 export function annual(p: ElectricityPoint, year: number) {
   const period = yearPeriod(year),
     start = p.eligibleFrom > period.start ? p.eligibleFrom : period.start,

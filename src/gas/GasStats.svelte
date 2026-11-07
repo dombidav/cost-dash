@@ -9,10 +9,12 @@
   import type { calculateBilling, calculateGasYear } from "../calculator";
   import { parseNumber } from "../calendar";
   import { fmt, money, signed } from "../lib/format";
+  import { regionLabel, regionOptions } from "../lib/regions";
   import type { AppState, StatisticsSettings } from "../types";
   import Field from "../components/Field.svelte";
   import Select from "../components/Select.svelte";
   import Chart from "../components/Chart.svelte";
+  import ElectricHeatingCard from "./ElectricHeatingCard.svelte";
   let {
     model,
     annual,
@@ -30,6 +32,8 @@
     stats: { ...model.stats, savingPercent: saving },
   });
   let result = $derived(calculateStatistics(preview, annual, bill));
+  const regions = regionOptions(R.ksh.regions);
+  const setRegion = (value: string) => update("region", value);
   const basis = {
     measured: "TELJES MÉRT ÉV",
     forecast: "PROFILALAPÚ BECSLÉS",
@@ -44,7 +48,7 @@
     ...(result.regional !== null
       ? [
           {
-            label: `${model.stats.region} · 2025`,
+            label: `${regionLabel(model.stats.region)} · 2025`,
             value: result.regional,
             own: false,
           },
@@ -119,15 +123,8 @@
         id="gas-stat-region"
         label="Területi összehasonlítás"
         value={model.stats.region}
-        options={[
-          { value: "country", label: "Csak országos átlag" },
-          ...Object.keys(R.ksh.regions)
-            .sort((a, b) => a.localeCompare(b, "hu"))
-            .map((r) => ({ value: r, label: r })),
-        ]}
-        oncommit={(value) => {
-          update("region", value);
-        }}
+        options={regions}
+        oncommit={setRegion}
       />
     </div>
     <p class="field-hint e-long-hint">
@@ -152,11 +149,15 @@
         <span>{fmt(result.billingCost?.total, 0)}</span><small>Ft</small>
       </div>
       <p class="stat-description">
-        {result.billingCost
-          ? `${model.billing.mode === "reading" ? "Mért fogyasztás" : "Becsült részszámla"} költsége, sávkorrekció nélkül.`
-          : model.billing.mode === "reading"
-            ? "Pontos határnapi mérések kellenek."
-            : "Add meg a becsült éves fogyasztást az időszaki kalkulátornál."}
+        {#if result.billingCost}
+          {model.billing.mode === "reading"
+            ? "Mért fogyasztás"
+            : "Becsült részszámla"} költsége, sávkorrekció nélkül.
+        {:else if model.billing.mode === "reading"}
+          <a href="#gas-reading">Rögzítsd a határnapi mérőállásokat.</a>
+        {:else}
+          Add meg a <a href="#gas-annual-estimate">becsült éves fogyasztást</a>.
+        {/if}
       </p>
       <dl class="cost-breakdown">
         <div>
@@ -226,9 +227,13 @@
         <span>{fmt(result.latest?.average, 2)}</span><small>m³/nap</small>
       </div>
       <p class="stat-description">
-        {result.latest
-          ? `${result.latest.start} → ${result.latest.end} · ${result.latest.days} nap · ${fmt(result.latest.volume)} m³.`
-          : "Legalább két mérés szükséges a kiválasztott évhez."}
+        {#if result.latest}
+          {result.latest.start} → {result.latest.end} · {result.latest.days} nap ·
+          {fmt(result.latest.volume)} m³.
+        {:else}
+          <a href="#gas-reading">Rögzíts legalább két mérőállást</a> a kiválasztott
+          évhez.
+        {/if}
       </p>
       <p class="stat-change">
         {result.previous
@@ -278,7 +283,11 @@
               : "A mért szakasz fogyasztását a havi profil alapján vetítjük ki az egész évre."
             : result.annualKind === "manual"
               ? "Kevés a mérés, ezért a kézzel megadott éves becslést mutatjuk."
-              : "Legalább 30 nap és az éves profilsúly 5%-ának megfigyelése kell; addig megadhatsz kézi éves becslést."}
+              : "Legalább 30 nap és az éves profilsúly 5%-ának megfigyelése kell."}
+        {#if result.annualKind === "missing"}
+          Addig megadhatsz <a href="#gas-annual-estimate">kézi éves becslést</a
+          >.
+        {/if}
       </p>
       <div class="forecast-track" aria-hidden="true">
         <span
@@ -328,9 +337,19 @@
           ? "A saját összevetéshez teljes éves mérés vagy jelölt éves becslés kell."
           : `Saját éves adat: ${fmt(result.annualVolume)} m³ · ${basis[result.annualKind].toLocaleLowerCase("hu")}.`}
       </p>
+      <div class="benchmark-filter">
+        <Select
+          id="gas-benchmark-region"
+          label="KSH területi összehasonlítás"
+          value={model.stats.region}
+          options={regions}
+          oncommit={setRegion}
+        />
+      </div>
       <Chart
         id="gas-benchmark"
         kind="benchmark"
+        unit="m³/év"
         {bars}
         label="Éves gázfogyasztás összehasonlítása"
       />
@@ -340,7 +359,7 @@
           : "Országos referencia: 954 m³/év."}
       </p>
       {#if result.regionalChange !== null}<p class="stat-footnote">
-          {model.stats.region} átlagához képest: {signed(
+          {regionLabel(model.stats.region)} átlagához képest: {signed(
             result.regionalChange,
           )}.
         </p>{/if}
@@ -365,11 +384,15 @@
         <span>{fmt(result.perArea?.kwh)}</span><small>kWh/m²/év</small>
       </div>
       <p class="stat-description">
-        {model.stats.area === null
-          ? "Add meg a fűtött alapterületet a beállítások között."
-          : result.perArea
-            ? `${fmt(result.perArea.volume, 2)} m³/m²/év · ${fmt(model.stats.area)} m².`
-            : "Éves mért vagy becsült fogyasztási adat is szükséges."}
+        {#if model.stats.area === null}
+          Add meg a <a href="#gas-stat-area">fűtött alapterületet</a>.
+        {:else if result.perArea}
+          {fmt(result.perArea.volume, 2)} m³/m²/év · {fmt(model.stats.area)} m².
+        {:else}
+          Éves mért vagy <a href="#gas-annual-estimate"
+            >becsült fogyasztási adat</a
+          > is szükséges.
+        {/if}
       </p>
       <p class="stat-footnote">
         Az összes felhasznált gáz energiája, melegvízzel és főzéssel együtt. Nem
@@ -480,5 +503,6 @@
         költséggel.
       </p>
     </article>
+    <ElectricHeatingCard settings={model.settings} usage={result.equivalence} />
   </div>
 </section>

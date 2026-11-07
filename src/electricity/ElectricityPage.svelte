@@ -22,6 +22,7 @@
     supported,
     officialRates,
     ELECTRICITY_REGIONS,
+    ELECTRICITY_STORAGE_KEY,
   } from "./reference";
   import { today, validDate, parseNumber, yearFor, days } from "../calendar";
   import { fmt, money, uid } from "../lib/format";
@@ -43,8 +44,12 @@
   import ElectricStats from "./ElectricStats.svelte";
   import PdfActions from "../components/PdfActions.svelte";
   import { electricityReport } from "./report";
-  const key = "rezsi-electricity.v1";
-  const disk = storage(key, initialState, validState, migrateState);
+  const disk = storage(
+    ELECTRICITY_STORAGE_KEY,
+    initialState,
+    validState,
+    migrateState,
+  );
   const initialRemoved = limitReadings(disk.data);
   if (initialRemoved) disk.save(disk.data);
   let removedReadings = $state(initialRemoved);
@@ -588,16 +593,22 @@
         {/if}
       </div>
       <p class="balance-note">
-        {yearly.active === 0
-          ? "Ebben a kedvezményes évben nincs megadott jogosult nap."
-          : !yearly.first
-            ? `A pontos követéshez ${yearly.activeStart}-i kezdőállás szükséges.`
-            : yearly.complete
-              ? `Követett időszak: ${yearly.first.date} → ${yearly.last!.date}.`
-              : openingExplanation(
-                  yearly.opening,
-                  yearly.start !== yearly.activeStart,
-                )}
+        {#if yearly.active === 0}
+          Ebben a kedvezményes évben nincs megadott <a
+            href="#electricity-eligible-from">jogosult nap</a
+          >.
+        {:else if !yearly.first}
+          A pontos követéshez <a href="#electricity-reading-peak"
+            >{yearly.activeStart}-i kezdőállás</a
+          > szükséges.
+        {:else}
+          {yearly.complete
+            ? `Követett időszak: ${yearly.first.date} → ${yearly.last!.date}.`
+            : openingExplanation(
+                yearly.opening,
+                yearly.start !== yearly.activeStart,
+              )}
+        {/if}
         {#if yearly.remaining !== null}A keret az utolsó mérésre ({yearly.last
             ?.date}) vonatkozik.{/if}
         {#if yearly.seasonSplitEstimated}Az idényhatárt átfogó mért fogyasztást
@@ -684,6 +695,15 @@
         />
         <p class="field-error" id="electricity-reading-error" role="alert">
           {formError?.message ?? ""}
+          {#if formError?.duplicate}
+            <a
+              href="#electricity-history-title"
+              onclick={() => {
+                model.year = yearFor(draft.date);
+                save();
+              }}>Szerkesztés a mérési naplóban</a
+            >
+          {/if}
         </p>
         <button class="primary-button" type="submit"
           ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
@@ -838,19 +858,37 @@
       {/if}
     </div>
     <p class="balance-note">
-      {bill.outside
-        ? "A fogyasztás egy része a megadott lakossági jogosultságon kívülre esik; ehhez nem adunk teljes költséget."
-        : bill.dynamicMissing
-          ? "D tarifa: 2027 előtti időszak vagy dinamikus áradatok nélküli kerettúllépés miatt nincs teljes forintösszeg."
-          : point.solar === "balance"
-            ? "Szaldós napelemhez ez a költségmodell nem alkalmazható."
-            : bill.volume === null
-              ? "Átalányhoz éves becslés, tényalapú számításhoz pontos határnapi mérés vagy megadott időszaki kWh kell."
-              : point.solar === "gross"
-                ? "Csak a hálózatból vételezett energia költsége; a betáplálási bevételt nem nettósítjuk."
-                : point.billing.schedule === "prepaid"
-                  ? "Ez a fogyasztás költségbecslése, nem a feltöltés összege vagy egy élő egyenleg."
-                  : "Sávkorrekció nélküli becslés; a korábbi megtakarítás és az éves elszámolás módosíthatja."}
+      {#if bill.outside}
+        A fogyasztás egy része a megadott <a href="#electricity-eligible-from"
+          >lakossági jogosultságon</a
+        >
+        kívülre esik, ezért nincs teljes költség.
+      {:else if bill.dynamicMissing}
+        D tarifa: 2027 előtti időszak vagy dinamikus áradatok nélküli
+        kerettúllépés miatt nincs teljes forintösszeg.
+      {:else if point.solar === "balance"}
+        Szaldós napelemhez ez a költségmodell nem alkalmazható.
+      {:else if bill.volume === null}
+        {#if point.billing.schedule === "flat"}
+          Az átalányhoz <a href="#electricity-annual-estimate">éves becslés</a> szükséges.
+        {:else if point.billing.source === "period"}
+          Add meg az <a href="#electricity-period-peak">időszaki fogyasztást</a
+          >.
+        {:else}
+          Rögzíts <a href="#electricity-reading-peak"
+            >pontos határnapi mérőállásokat</a
+          >.
+        {/if}
+      {:else if point.solar === "gross"}
+        Csak a hálózatból vételezett energia költsége látható, a betáplálási
+        bevétel nélkül.
+      {:else if point.billing.schedule === "prepaid"}
+        Ez a fogyasztás költségbecslése, nem a feltöltés összege vagy egy élő
+        egyenleg.
+      {:else}
+        Sávkorrekció nélküli becslés. A korábbi megtakarítás és az éves
+        elszámolás módosíthatja.
+      {/if}
     </p>
     {#if point.tariff === "H"}
       <p class="field-hint e-long-hint">
@@ -868,6 +906,7 @@
 {#if hasMultiplePoints}<section
     class="card aggregate-card"
     id="electricity-aggregate"
+    tabindex="-1"
   >
     <div class="card-heading">
       <h2>Minden mérőd, egy helyen</h2>
@@ -973,10 +1012,8 @@
               </dd>
             </div>
           </dl>
-          <a href="#electricity-point" onclick={() => selectPoint(row.point.id)}
-            >{row.point.id === model.selected
-              ? "Aktív mérő ↑"
-              : "Részletek megnyitása ↑"}</a
+          <a href="#electricity-name" onclick={() => selectPoint(row.point.id)}
+            >{row.point.name} beállításai ↑</a
           >
         </article>{/each}
     </div>
@@ -997,6 +1034,7 @@
 {#key `${point.id}-${model.year}`}
   <ReadingLog
     id="electricity-history"
+    readingId="electricity-reading-peak"
     unit="kWh"
     {removedReadings}
     rows={yearly.items.map((r) => ({

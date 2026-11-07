@@ -1,4 +1,6 @@
 import type { Area, Tariff, Rates } from "./types";
+export const ELECTRICITY_STORAGE_KEY = "rezsi-electricity.v1";
+export const DAYTIME_MARKET_RATE = 70.104;
 export const PRICE_SOURCE =
   "https://www.mvmnext.hu/aram/servlet/download?id=16214&type=file";
 export const VERIFIED = "2026-11-06";
@@ -64,7 +66,7 @@ export function officialRates(area: Area, tariff: Tariff): Rates {
         ? null
         : tariff === "B_BASIC" || tariff === "B_COMFORT"
           ? 60.935
-          : 70.104,
+          : DAYTIME_MARKET_RATE,
     monthlyBase: ["A1", "A2", "D"].includes(tariff) ? 153.035 : 50.165,
     effective: "2022-08-01",
   };

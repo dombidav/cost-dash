@@ -92,6 +92,7 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
     "A kazán műszaki adatlapján vagy szakember becsléséből. A valós üzem eltérhet a laborértéktől; az alapérték szemléltető feltételezés.",
   ),
   "gas-stat-region": region,
+  "gas-benchmark-region": region,
   "gas-saving": saving,
   "electricity-year": year,
   "electricity-point-select": help(
@@ -220,6 +221,11 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
     "Alaprajzról, ingatlandokumentumból vagy saját mérésből. A külön mérőre vetített mutató nem energetikai tanúsítvány és nem a ház teljes energiaigénye.",
   ),
   "electricity-region": region,
+  "electricity-benchmark-region": region,
+  "electricity-consumption-example": help(
+    "Az aktív mérő legutóbbi 30 napra eső fogyasztását hasonlítja össze egy hétköznapi példával.",
+    "Válassz egy készüléket. A példához használt teljesítményt vagy ciklusonkénti fogyasztást a kártya alján találod.",
+  ),
   "electricity-watts": help(
     "A példaként választott készülék névleges elektromos teljesítménye wattban. Ebből készül az üzemóra- és havi energia-egyenérték.",
     "A készülék adattábláján vagy használati útmutatójában, W egységgel. 1 kW = 1000 W. A termosztát miatt a tényleges fogyasztás kisebb is lehet a folyamatos névlegesnél.",

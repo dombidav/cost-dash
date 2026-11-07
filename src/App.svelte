@@ -10,9 +10,59 @@
     gas: () => import("./gas/GasPage.svelte"),
   };
   const page = pages[electricity ? "electricity" : "gas"]();
+  void page.then(
+    () => revealFragment(),
+    () => {},
+  );
   let notification = $state<HTMLDivElement>();
   let notificationHeight = $state(0);
   let undoButton = $state<HTMLButtonElement>();
+
+  async function revealFragment() {
+    const hash = location.hash;
+    if (!hash || hash === "#main") return;
+    await tick();
+    if (hash !== location.hash) return;
+    const target = document.getElementById(hash.slice(1));
+    if (!target) return;
+
+    const panel = target.closest<HTMLElement>(
+      "[data-section-disclosure][inert]",
+    );
+    if (panel) {
+      document
+        .querySelector<HTMLButtonElement>(
+          `button[aria-controls="${CSS.escape(panel.id)}"]`,
+        )
+        ?.click();
+      await tick();
+    }
+    if (!target.isConnected || hash !== location.hash) return;
+    for (
+      let parent = target.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      if (parent instanceof HTMLDetailsElement) parent.open = true;
+    }
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "start" });
+  }
+
+  function revisitFragment(event: MouseEvent) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    if (!(event.target instanceof Element)) return;
+    const link = event.target.closest<HTMLAnchorElement>('a[href^="#"]');
+    if (link?.hash === location.hash) void revealFragment();
+  }
 
   $effect(() => {
     if (ui.undo && undoButton) undoButton.focus();
@@ -53,6 +103,8 @@
 </script>
 
 <svelte:window
+  onhashchange={revealFragment}
+  onclick={revisitFragment}
   onfocusin={keepFocusVisible}
   onpagehide={() => {
     (document.activeElement as HTMLElement | null)?.blur();

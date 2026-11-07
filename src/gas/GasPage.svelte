@@ -338,11 +338,15 @@
       {/if}
     </div>
     <p class="balance-note">
-      {!annual.first
-        ? `Az éves követéshez ${annual.start}-i kezdőállást adj meg.`
-        : annual.complete
+      {#if !annual.first}
+        Az éves követéshez adj meg <a href="#gas-reading"
+          >{annual.start}-i kezdőállást</a
+        >.
+      {:else}
+        {annual.complete
           ? `Követett időszak: ${annual.first.date} → ${annual.last!.date}. A maradék az utolsó mérés időpontjára vonatkozik.`
           : openingExplanation(annual.opening)}
+      {/if}
       {#if annual.opening}A becsült keret az utolsó mérésre ({annual.last
           ?.date}) vonatkozik.{/if}
     </p>
@@ -394,6 +398,15 @@
       />
       <p id="gas-reading-error" class="field-error" role="alert">
         {formError?.message ?? ""}
+        {#if formError?.duplicate}
+          <a
+            href="#gas-history-title"
+            onclick={() => {
+              model.year = yearFor(draft.date);
+              save();
+            }}>Szerkesztés a mérési naplóban</a
+          >
+        {/if}
       </p>
       <button class="primary-button" type="submit"
         ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
@@ -524,11 +537,13 @@
           : "Becsült számlázott mennyiség"}</span
       ><strong>{fmt(bill.consumption)} <small>m³</small></strong>
       <p>
-        {bill.consumption === null
-          ? model.billing.mode === "reading"
-            ? "Pontos határnapi mérések szükségesek."
-            : "Add meg a becsült éves fogyasztást."
-          : `${bill.days} napra számolva`}
+        {#if bill.consumption !== null}
+          {bill.days} napra számolva
+        {:else if model.billing.mode === "reading"}
+          <a href="#gas-reading">Pontos határnapi mérések</a> szükségesek.
+        {:else}
+          Add meg a <a href="#gas-annual-estimate">becsült éves fogyasztást</a>.
+        {/if}
       </p>
     </div>
     <div>
@@ -563,6 +578,7 @@
 {#key model.year}
   <ReadingLog
     id="gas-history"
+    readingId="gas-reading"
     unit="m³"
     {removedReadings}
     rows={annual.items.map((r) => ({
@@ -577,7 +593,7 @@
     onopening={opening}
   />
 {/key}
-<section class="comparison-section" id="gas-comparison">
+<section class="comparison-section" id="gas-comparison" tabindex="-1">
   <div class="eyebrow">
     <span class="tiny-line"></span>ÉRTHETŐEN A SZÁMLÁZÁSRÓL
   </div>

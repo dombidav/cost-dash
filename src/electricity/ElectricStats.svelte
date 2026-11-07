@@ -5,10 +5,12 @@
   import { parseNumber } from "../calendar";
   import { percentChange } from "../lib/consumption";
   import { fmt, money, signed } from "../lib/format";
+  import { regionLabel, regionOptions } from "../lib/regions";
   import { NATIONAL_MONTHLY, ELECTRICITY_REGIONS } from "./reference";
   import Field from "../components/Field.svelte";
   import Select from "../components/Select.svelte";
   import Chart from "../components/Chart.svelte";
+  import ConsumptionExamples from "./ConsumptionExamples.svelte";
   let {
     settings,
     yearly,
@@ -55,10 +57,15 @@
       ? percentChange(yearly.tracked.average, yearly.prior.average)
       : null,
   );
+  const regions = regionOptions(ELECTRICITY_REGIONS);
+  const setRegion = (value: string) => update("region", value);
+  let region = $derived(
+    Object.hasOwn(ELECTRICITY_REGIONS, settings.region)
+      ? settings.region
+      : "country",
+  );
   let regional = $derived(
-    settings.region !== "country"
-      ? (ELECTRICITY_REGIONS[settings.region] ?? NATIONAL_MONTHLY) * 12
-      : null,
+    region === "country" ? null : ELECTRICITY_REGIONS[region] * 12,
   );
   let bars = $derived([
     ...(yearly.volume !== null
@@ -87,7 +94,13 @@
       own: false,
     },
     ...(regional !== null
-      ? [{ label: `${settings.region} · 2025`, value: regional, own: false }]
+      ? [
+          {
+            label: `${regionLabel(region)} · 2025`,
+            value: regional,
+            own: false,
+          },
+        ]
       : []),
   ]);
   let eqVolume = $derived(yearly.latest?.volume ?? 1);
@@ -179,16 +192,9 @@
       /><Select
         id="electricity-region"
         label="KSH területi referencia"
-        value={settings.region}
-        options={[
-          { value: "country", label: "Országos átlag" },
-          ...Object.keys(ELECTRICITY_REGIONS)
-            .sort((a, b) => a.localeCompare(b, "hu"))
-            .map((r) => ({ value: r, label: r })),
-        ]}
-        oncommit={(value) => {
-          update("region", value);
-        }}
+        value={region}
+        options={regions}
+        oncommit={setRegion}
       /><Field
         id="electricity-watts"
         label="Példakészülék teljesítménye · W"
@@ -214,9 +220,13 @@
         <span>{fmt(yearly.latest?.average, 2)}</span><small>kWh/nap</small>
       </div>
       <p class="stat-description">
-        {yearly.latest
-          ? `${yearly.latest.start} → ${yearly.latest.end} · ${yearly.latest.days} nap · ${fmt(yearly.latest.volume)} kWh.`
-          : "Legalább két érvényes mérés szükséges a kiválasztott évhez."}
+        {#if yearly.latest}
+          {yearly.latest.start} → {yearly.latest.end} · {yearly.latest.days} nap ·
+          {fmt(yearly.latest.volume)} kWh.
+        {:else}
+          <a href="#electricity-reading-peak">Rögzíts legalább két mérőállást</a
+          > a kiválasztott évhez.
+        {/if}
       </p>
       <p class="stat-change">
         {yearly.previous
@@ -244,7 +254,11 @@
               : "A mért szakasz fogyasztását a havi profil alapján vetítjük ki a jogosult időszakra."
             : yearly.kind === "manual"
               ? "Az éves fogyasztási beállításból, havi súlyozással a jogosult időszakra."
-              : "Éves fogyasztási becslés vagy hosszabb mért időszak szükséges."}
+              : ""}
+        {#if yearly.kind === "missing"}
+          <a href="#electricity-annual-estimate">Éves fogyasztási becslés</a> vagy
+          hosszabb mért időszak szükséges.
+        {/if}
         {#if point.tariff === "H" && yearly.kind === "manual"}
           A fűtési idényre a beállított fogyasztási aránnyal számolunk.
         {/if}
@@ -307,10 +321,19 @@
           : `Aktív mérő: ${fmt(yearly.volume)} kWh · ${basis[yearly.kind].toLocaleLowerCase("hu")}.`}
         Országos referencia: {fmt(NATIONAL_MONTHLY * 12)} kWh/év.
       </p>
+      <div class="benchmark-filter">
+        <Select
+          id="electricity-benchmark-region"
+          label="KSH területi összehasonlítás"
+          value={region}
+          options={regions}
+          oncommit={setRegion}
+        />
+      </div>
       <Chart
         id="electricity-benchmark"
         kind="benchmark"
-        unit="kWh"
+        unit="kWh/év"
         {bars}
         label="Éves áramfogyasztás összehasonlítása"
       />
@@ -320,7 +343,7 @@
           : ""}
       </p>
       {#if yearly.volume !== null && regional !== null}<p class="stat-footnote">
-          {settings.region} átlagához képest: {signed(
+          {regionLabel(region)} átlagához képest: {signed(
             percentChange(yearly.volume, regional),
           )}.
         </p>{/if}
@@ -417,9 +440,23 @@
         ><small>kWh/fő/év</small>
       </div>
       <p class="stat-description">
-        {yearly.volume !== null && settings.floorArea
-          ? `${fmt(yearly.volume / parseNumber(settings.floorArea))} kWh/m²/év.`
-          : "Az alapterületet és a háztartás létszámát a statisztika beállításai között adhatod meg."}
+        {#if yearly.volume !== null && settings.floorArea}
+          {fmt(yearly.volume / parseNumber(settings.floorArea))} kWh/m²/év.
+        {/if}
+        {#if !settings.floorArea || !settings.people}
+          {#if !settings.floorArea && !settings.people}
+            Add meg az <a href="#electricity-floor-area">alapterületet</a> és a
+            <a href="#electricity-people">háztartás létszámát</a>.
+          {:else if !settings.floorArea}
+            Add meg az <a href="#electricity-floor-area">alapterületet</a>.
+          {:else}
+            Add meg a <a href="#electricity-people">háztartás létszámát</a>.
+          {/if}
+        {:else if yearly.volume === null}
+          Éves mért vagy <a href="#electricity-annual-estimate"
+            >becsült fogyasztási adat</a
+          > is szükséges.
+        {/if}
       </p>
       <p class="stat-footnote">
         Az aktív mérő éves mért vagy becsült energiájából számoljuk.
@@ -434,9 +471,15 @@
           <span>{fmt(balanceDays, 0)}</span><small>nap</small>
         </div>
         <p class="stat-description">
-          {balanceDays === null
-            ? "Add meg az aktuális feltöltött egyenleget, és rögzíts legalább két állást."
-            : `${money(parseNumber(point.billing.balance))} egyenleg a legutóbbi mért napi költség mellett.`}
+          {#if balanceDays === null}
+            Add meg az <a href="#electricity-balance"
+              >aktuális feltöltött egyenleget</a
+            >, és
+            <a href="#electricity-reading-peak">rögzíts legalább két állást</a>.
+          {:else}
+            {money(parseNumber(point.billing.balance))} egyenleg a legutóbbi mért
+            napi költség mellett.
+          {/if}
         </p>
         <p class="stat-footnote">
           Átlagalapú becslés, nem élő mérőegyenleg. Nem végzünk feltöltést, és a
@@ -476,5 +519,10 @@
         megtakarítás.
       </p>
     </article>
+    <ConsumptionExamples
+      {point}
+      value={settings.consumptionExample}
+      onselect={(value) => onstats({ ...settings, consumptionExample: value })}
+    />
   </div>
 </section>

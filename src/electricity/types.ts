@@ -59,6 +59,7 @@ export interface ElectricityState {
     saving: number;
     deviceWatts: number;
     dailyHours: number;
+    consumptionExample?: string;
   };
 }
 export interface DailyConsumption {
