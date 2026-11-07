@@ -3,13 +3,16 @@
   import Header from "./components/Header.svelte";
   import Faq from "./components/Faq.svelte";
   import { ui } from "./lib/ui.svelte";
-  const electricity = location.pathname.endsWith("/aram.html");
+  import { currentPage, pages as navigation } from "./lib/pages";
+  const id = currentPage(location.pathname);
+  const pageInfo = navigation[id];
   // Keep each lazy entry separate so its component CSS is preloaded with it.
   const pages = {
     electricity: () => import("./electricity/ElectricityPage.svelte"),
     gas: () => import("./gas/GasPage.svelte"),
+    water: () => import("./water/WaterPage.svelte"),
   };
-  const page = pages[electricity ? "electricity" : "gas"]();
+  const page = pages[id]();
   void page.then(
     () => revealFragment(),
     () => {},
@@ -112,13 +115,13 @@
 />
 
 <a class="skip-link" href="#main">Ugrás a tartalomhoz</a>
-<Header {electricity} />
+<Header {id} />
 <main id="main" class="shell" tabindex="-1">
   {#await page}
     <div class="empty-state" role="status">A kalkulátor betöltése…</div>
   {:then Page}
     <Page.default />
-    <Faq {electricity} />
+    <Faq {id} />
   {:catch}
     <p class="notice danger" role="alert">
       A kalkulátor nem tölthető be. Töltsd újra az oldalt.
@@ -126,12 +129,9 @@
   {/await}
 </main>
 <footer class="shell">
-  <a class="footer-brand" href={electricity ? "./aram.html" : "./index.html"}
-    >RezsiPont</a
-  ><span>Rezsiszámlák egyszerűen. Pont.</span><span
-    >{electricity ? "Lakossági villamos energia" : "Lakossági földgáz"} · Tájékoztató
-    becslés</span
-  >
+  <a class="footer-brand" href={pageInfo.href}>RezsiPont</a><span
+    >Rezsiszámlák egyszerűen. Pont.</span
+  ><span>{pageInfo.title} · Tájékoztató becslés</span>
 </footer>
 <div role="status" class="sr-only">{ui.message}</div>
 {#if ui.message || ui.undo}

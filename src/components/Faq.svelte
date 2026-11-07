@@ -1,5 +1,6 @@
 <script lang="ts">
-  let { electricity }: { electricity: boolean } = $props();
+  import { pages, type PageId } from "../lib/pages";
+  let { id }: { id: PageId } = $props();
 
   type Question = {
     question: string;
@@ -63,7 +64,7 @@
     {
       question: "Hol maradnak a megadott adataim?",
       answer:
-        "A mérőállásaid és beállításaid abban a böngészőben maradnak, amelyikben megadtad őket. Egy e-mailben kapott link másik böngészőben is megnyílhat, ahol a mentett adatok nem látszanak.",
+        "A mérőállásaid, kiadásaid és beállításaid abban a böngészőben maradnak, amelyikben megadtad őket. Egy e-mailben kapott link másik böngészőben is megnyílhat, ahol a mentett adatok nem látszanak.",
     },
     {
       question: "Milyen adatokat gyűjt az oldal?",
@@ -78,7 +79,7 @@
     {
       question: "Mi történik, ha törlöm a böngésző adatait?",
       answer:
-        "Ha törlöd az oldalhoz mentett böngészőadatokat, az itt rögzített mérőállások és beállítások is törlődnek.",
+        "Ha törlöd az oldalhoz mentett böngészőadatokat, az itt rögzített mérőállások, kiadások és beállítások is törlődnek.",
     },
     {
       question: "Miért térhet el a becslés a számlámtól?",
@@ -87,11 +88,24 @@
     },
   ];
 
+  const questions: Record<PageId, Question[]> = {
+    electricity: electricityQuestions,
+    gas: gasQuestions,
+    water: [
+      {
+        question: "Mit tegyek, ha a településem nincs a listán?",
+        answer:
+          "Válaszd az Egyedi díjak lehetőséget, és add meg a számládon szereplő bruttó díjakat. Az alapdíjat külön írd be.",
+      },
+      {
+        question: "Mit adjak meg, ha nincs csatornadíjam?",
+        answer:
+          "Írj nullát a csatornadíj mezőbe. Ha csak a csatornázott mennyiség tér el, add meg külön a számlán szereplő mennyiséget.",
+      },
+    ],
+  };
   let groups = $derived([
-    {
-      title: electricity ? "Áram" : "Gáz",
-      questions: electricity ? electricityQuestions : gasQuestions,
-    },
+    { title: pages[id].label, questions: questions[id] },
     { title: "Az oldalról", questions: siteQuestions },
   ]);
 </script>

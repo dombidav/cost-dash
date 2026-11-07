@@ -1,0 +1,133 @@
+body[data-energy="water"] {
+  --accent: #89caff;
+  --accent-rgb: 137 202 255;
+}
+
+.energy-nav {
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.energy-nav a {
+  min-width: 0;
+  justify-content: center;
+}
+
+.brand-mark text {
+  fill: var(--on-accent, #182018);
+}
+
+.expense-page {
+  display: grid;
+  gap: clamp(14px, 2vw, 22px);
+  min-width: 0;
+  padding-top: clamp(16px, 3vw, 32px);
+}
+
+.expense-intro h1 {
+  margin: 6px 0 8px;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.12;
+}
+
+.expense-intro p,
+.expense-subtitle {
+  margin: 0 0 18px;
+  max-width: 70ch;
+  color: var(--muted);
+}
+
+.expense-page h2 {
+  margin: 0 0 8px;
+}
+
+.expense-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.expense-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.expense-actions > button {
+  min-height: 44px;
+}
+
+.expense-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  gap: 14px;
+  margin: 14px 0 0;
+}
+
+.expense-metrics > div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  padding: 12px 14px;
+}
+
+.expense-metrics dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.expense-metrics dd {
+  margin: 3px 0 0;
+  font-size: clamp(1rem, 2.7vw, 1.45rem);
+  color: var(--accent);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.expense-detail {
+  margin-top: 16px;
+  color: var(--muted);
+}
+
+.expense-detail summary {
+  padding-block: 8px;
+  cursor: pointer;
+}
+
+.expense-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.expense-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+
+.expense-list li p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.expense-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.expense-row-actions button {
+  min-height: 36px;
+}
