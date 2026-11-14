@@ -28,6 +28,18 @@ A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-s
 
 Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja.
 
+## GitHub Pages deployment
+
+A `.github/workflows/pages.yml` workflow a `master` ágra történő push esetén Node.js 24 alatt telepíti a rögzített függőségeket (`npm ci`), futtatja a lintet és a típusellenőrzést is tartalmazó buildet, majd a `dist/` tartalmát publikálja GitHub Pagesre. A `master` ágra nyitott pull requesteknél ugyanezek az ellenőrzések futnak. A deployment kézzel is indítható az Actions → GitHub Pages → Run workflow menüből, a `master` ágat kiválasztva.
+
+Egyszeri beállítás a [repo Pages-beállításaiban](https://github.com/dombidav/cost-dash/settings/pages): **Build and deployment → Source → GitHub Actions**. Ezután a következő `master` push vagy kézi workflow-indítás publikálja az appot. Külön token vagy repository secret nem szükséges; a workflow a beépített `GITHUB_TOKEN` és az OIDC használatával telepít. A build csak olvasási jogot kap, a Pages írási jogosultsága a deployment jobra korlátozódik.
+
+A várható publikus cím: https://dombidav.github.io/cost-dash/. Mind a hat HTML-oldal közvetlenül elérhető, például a Dashboard a `dashboard.html` útvonalon. A Vite `base: "./"` beállítása és a relatív navigáció miatt az assetek, a PDF-betűtípusok és a PDF-import worker a `/cost-dash/` alkönyvtárból is betöltődnek; nincs szükség SPA fallbackre vagy külön `gh-pages` ágra.
+
+A helyi böngészőadatok nem kerülnek át automatikusan a localhostról az új címre. A gáz- és áramadatok a PDF-export és -visszaállítás segítségével vihetők át. A localStorage originenként közös, ezért az azonos `dombidav.github.io` domainen futó más appokkal azonos tárhelyen lesznek.
+
+A workflow a [Vite hivatalos GitHub Pages útmutatójára](https://vite.dev/guide/static-deploy#github-pages) épül; a GitHub Actions lépések teljes commit SHA-ra vannak rögzítve.
+
 ## Használat
 
 - **Víz:** a fogyasztás két dátumozott vízóraállás különbsége. A település, a bruttó egységárak és a havi alapdíj egy helyen állíthatók; az összes becslés a jelenlegi díjakat használja. Az alapdíj naparányos. A korábbi havi tételek megmaradnak, külön a mérési naplótól. A Dashboard a hónapokat átfedő méréseket egyenletes napi fogyasztást feltételezve osztja szét.
@@ -93,7 +105,7 @@ Referenciaadatok: `src/reference-data.ts`. Az MVM 2026. októberi [díjtájékoz
 - `src/lib/`: formázás, validált helyi tárolás és Svelte-állapot a mentési visszajelzéshez.
 - `src/style.css`: közös mobilközpontú stílusok és témaváltozók; gázon zöld, áramon kék kiemelés, azonos sötét háttérrel.
 
-A korábbi DOM-ot kézzel építő alkalmazásmodulokat eltávolítottuk. A Svelte-migráció előtti mentőcommit: `a72a21c` (`chore: snapshot before Svelte migration`). A fordítás `svelte-check` ellenőrzést is futtat.
+A korábbi DOM-ot kézzel építő alkalmazásmodulokat eltávolítottuk. A Svelte-migráció előtti mentőcommit: `b381eb7` (`feat: add electricity calculator and TypeScript build`). A fordítás `svelte-check` ellenőrzést is futtat.
 
 ## Áram és több mérő
 
