@@ -1,6 +1,10 @@
 <script lang="ts">
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
   import Help from "../components/Help.svelte";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { readAppBackup, parseAppBackup, restoreAppBackup } from "./backup";
+  import { dashboardReport } from "./report";
+  import { ui } from "../lib/ui.svelte";
   import { today } from "../calendar";
   import { fmt, money } from "../lib/format";
   import { monthLabel } from "../lib/months";
@@ -70,6 +74,7 @@
   );
   let canvas = $state<HTMLCanvasElement>();
   let chartFailed = $state(false);
+  let restoreVersion = $state(0);
 
   function reloadSources() {
     sources = readSources();
@@ -278,7 +283,9 @@
 
   <UpcomingPayments {sources} {now} />
   <MonthlyPlan {sources} {now} />
-  <MonthlyBudget row={budgetMonth} {sources} {now} />
+  {#key restoreVersion}
+    <MonthlyBudget row={budgetMonth} {sources} {now} />
+  {/key}
 
   <section class="card" aria-labelledby="dashboard-trend">
     <h2 id="dashboard-trend">Havi alakulás · {year}</h2>
@@ -388,6 +395,27 @@
       </p>{/if}
   </section>
   <UtilityTrend {sources} {months} {year} />
+  <PdfActions
+    category="dashboard"
+    getData={readAppBackup}
+    report={(data, detailed) =>
+      dashboardReport(data, detailed, year, monthIndex)}
+    parse={parseAppBackup}
+    description="Teljes appmentés: minden gáz-, áram-, víz-, autó- és havidíjadat, beállítás, mentett piszkozat és a havi keret is bekerül a PDF-be. Mindkét export a teljes adatállományt menti, a kiválasztott kimutatási időszaktól függetlenül."
+    logLabel="Teljes mentés (PDF)"
+    detailedLabel="Teljes mentés és havi kimutatás (PDF)"
+    restoreScope="a teljes app összes jelenlegi adatát és beállítását, a havi keretet is beleértve. A mentésben üres kategóriák jelenlegi adatai is törlődnek"
+    describe={(saved) =>
+      `${saved.gas?.readings.length ?? 0} gázmérés, ${saved.electricity?.points.length ?? 0} árammérő, ${saved.water?.readings.length ?? 0} vízóraállás, ${saved.water?.months.length ?? 0} korábbi vízhónap, ${saved.car?.cars.length ?? 0} autó, ${saved.subscriptions?.length ?? 0} havidíj és a havi keret`}
+    onrestore={(saved) => {
+      restoreAppBackup(saved);
+      reloadSources();
+      restoreVersion++;
+      ui.status = "A teljes app adatai visszaállítva";
+      ui.storageError = false;
+      return true;
+    }}
+  />
 </div>
 
 <style>

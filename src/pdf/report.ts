@@ -11,6 +11,10 @@ export interface ReportMeter {
   statistics?: ReportStatistics;
   columns: string[];
   readings: string[][];
+  columnWeights?: number[];
+  alignments?: ("left" | "right")[];
+  emptyMessage?: string;
+  tableTitle?: string;
 }
 
 export interface Report {
@@ -18,6 +22,10 @@ export interface Report {
   period?: string;
   summary?: ReportStatistics;
   meters: ReportMeter[];
+  title?: string;
+  periodLabel?: string;
+  summaryTitle?: string;
+  note?: string;
 }
 
 export function quantity(

@@ -4,6 +4,8 @@
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
   import PageIntro from "../components/PageIntro.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { waterReport } from "./report";
   import { readingError } from "../calculator";
   import { monthPeriod, parseNumber, today } from "../calendar";
   import { percentChange } from "../lib/consumption";
@@ -307,4 +309,24 @@
     </p>
   </section>
   <WaterExamples {intervals} {now} />
+  <PdfActions
+    category="water"
+    getData={() => $state.snapshot(data)}
+    report={waterReport}
+    logLabel="Víznapló (PDF)"
+    detailedLabel="Víznapló és összesítés (PDF)"
+    parse={(value) => {
+      const parsed = migrateWater(value);
+      return validWater(parsed) ? parsed : null;
+    }}
+    describe={(saved) =>
+      `${saved.readings.length} vízóraállás, ${saved.months.length} korábbi havi tétel és a vízdíj-beállítások`}
+    onrestore={(saved) => {
+      if (!disk.save(saved)) return false;
+      data = saved;
+      date = now;
+      value = error = "";
+      return true;
+    }}
+  />
 </div>

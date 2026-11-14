@@ -5,6 +5,8 @@
   import Field from "../components/Field.svelte";
   import Help from "../components/Help.svelte";
   import PageIntro from "../components/PageIntro.svelte";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { carReport } from "./report";
   import { parseNumber, today, validDate } from "../calendar";
   import { fmt, money, uid } from "../lib/format";
   import { nonnegative } from "../lib/months";
@@ -626,6 +628,26 @@
     {:else}<p class="empty-state">Még nincs mentett autós kiadás.</p>{/if}
   </section>
   <CarGuide />
+  <PdfActions
+    category="car"
+    getData={() => $state.snapshot(data)}
+    report={carReport}
+    description="A PDF minden autód naplóját, ütemezett díjait és beállításait menti. A visszaállítás az összes jelenlegi autót lecseréli."
+    logLabel="Autós naplók (PDF)"
+    detailedLabel="Naplók és összesítés (PDF)"
+    parse={(value) => {
+      const parsed = migrateCar(value);
+      return validCar(parsed) ? parsed : null;
+    }}
+    describe={(saved) =>
+      `${saved.cars.length} autó, ${saved.cars.reduce((sum, item) => sum + item.entries.length, 0)} naplóbejegyzés, az ütemezett díjak és beállítások`}
+    onrestore={(saved) => {
+      if (!disk.save(saved)) return false;
+      data = saved;
+      reset();
+      return true;
+    }}
+  />
 </div>
 
 <style>

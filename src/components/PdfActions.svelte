@@ -2,26 +2,40 @@
   import { tick } from "svelte";
   import { today } from "../calendar";
   import { READING_LIMIT } from "../lib/reading-limit";
-  import { backup, restore, type Category } from "../pdf/backup";
+  import {
+    backup,
+    backupCategories,
+    restore,
+    type Category,
+  } from "../pdf/backup";
   import type { Report } from "../pdf/report";
   import { pdfStatusMessages } from "../pdf/status";
+  import { ui } from "../lib/ui.svelte";
 
   let {
     category,
     getData,
     report,
     parse,
-    limit,
+    limit = () => 0,
     describe,
     onrestore,
+    description,
+    logLabel = "Adatok (PDF)",
+    detailedLabel = "Adatok és összesítés (PDF)",
+    restoreScope = "az ezen az oldalon tárolt adatokat és beállításokat",
   }: {
     category: Category;
     getData: () => T;
     report: (data: T, detailed: boolean) => Report;
     parse: (data: unknown) => T | null;
-    limit: (data: T) => number;
+    limit?: (data: T) => number;
     describe: (data: T) => string;
     onrestore: (data: T) => boolean;
+    description?: string;
+    logLabel?: string;
+    detailedLabel?: string;
+    restoreScope?: string;
   } = $props();
 
   let input: HTMLInputElement;
@@ -30,12 +44,16 @@
   let operation = $state<"generate" | "read" | null>(null);
   let busy = $derived(operation !== null);
   let statusIndex = $state(0);
+  let meterCategory = $derived(
+    category === "gas" || category === "electricity",
+  );
   let message = $state("");
   let error = $state("");
   let pending = $state.raw<{
     data: T;
     description: string;
     removed: number;
+    current: string;
   } | null>(null);
   $effect(() => {
     if (!operation) return;
@@ -66,15 +84,18 @@
       );
       const link = document.createElement("a");
       link.href = url;
-      const slug = category === "gas" ? "gaz" : "aram";
-      link.download = `rezsipont-${slug}-${detailed ? "statisztikak" : "fogyasztasi-naplo"}-${date}.pdf`;
+      const { slug } = backupCategories[category];
+      link.download = `rezsipont-${slug}-${detailed ? "osszesites" : "adatok"}-${date}.pdf`;
       document.body.append(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
       message = "A PDF elkészült.";
-    } catch {
-      error = "A PDF elkészítése nem sikerült. Próbáld meg újra.";
+    } catch (reason) {
+      error =
+        reason instanceof Error
+          ? reason.message
+          : "A PDF elkészítése nem sikerült. Próbáld meg újra.";
     } finally {
       operation = null;
     }
@@ -102,7 +123,12 @@
       try {
         const data = restore(content, category, parse);
         const removed = limit(data);
-        pending = { data, description: describe(data), removed };
+        pending = {
+          data,
+          description: describe(data),
+          removed,
+          current: JSON.stringify(getData()),
+        };
       } catch (reason) {
         error = (reason as Error).message;
       }
@@ -130,11 +156,25 @@
 
   function apply() {
     if (!pending || busy) return;
-    if (!onrestore(pending.data)) {
-      error = "A visszaállított adatokat nem sikerült helyben menteni.";
+    try {
+      if (JSON.stringify(getData()) !== pending.current) {
+        error =
+          "Az adatok a PDF beolvasása óta megváltoztak. Válaszd ki újra a PDF-et a visszaállításhoz.";
+        return;
+      }
+      if (!onrestore(pending.data)) {
+        error = "A visszaállított adatokat nem sikerült helyben menteni.";
+        return;
+      }
+    } catch (reason) {
+      error =
+        reason instanceof Error
+          ? reason.message
+          : "A visszaállítás nem sikerült.";
       return;
     }
     const { removed } = pending;
+    ui.undo = null;
     void closeRestore();
     message = removed
       ? `Az adatok visszaállítása sikerült. A legrégebbi ${removed} mérés kimaradt.`
@@ -145,15 +185,17 @@
 <section class="card pdf-actions" aria-label="PDF exportálás és visszaállítás">
   <h2>PDF exportálás és visszaállítás</h2>
   <p>
-    Mentsd el a méréseidet PDF-ben, hogy később is visszaállíthasd őket. Az
-    oldal a legutóbbi {READING_LIMIT} mérést őrzi meg.
+    {description ??
+      (meterCategory
+        ? `Mentsd el a méréseidet PDF-ben, hogy később is visszaállíthasd őket. Az oldal a legutóbbi ${READING_LIMIT} mérést őrzi meg.`
+        : "Mentsd el az adatokat és beállításokat PDF-ben, hogy később visszaállíthasd őket.")}
   </p>
   <div class="actions">
     <button type="button" aria-disabled={busy} onclick={() => download(false)}
-      >Fogyasztási napló (PDF)</button
+      >{meterCategory ? "Fogyasztási napló (PDF)" : logLabel}</button
     >
     <button type="button" aria-disabled={busy} onclick={() => download(true)}
-      >Napló és statisztikák (PDF)</button
+      >{meterCategory ? "Napló és statisztikák (PDF)" : detailedLabel}</button
     >
     <button
       type="button"
@@ -174,8 +216,8 @@
   {#if pending}
     <div class="restore">
       <p id={`${category}-restore-summary`}>
-        <strong>A mentés tartalma: {pending.description}.</strong> Visszaállításkor
-        a mentés lecseréli az ezen az oldalon tárolt méréseket és beállításokat.
+        <strong>A mentés tartalma: {pending.description}.</strong>
+        Visszaállításkor a mentés lecseréli {restoreScope}.
       </p>
       {#if pending.removed}
         <p class="feedback">

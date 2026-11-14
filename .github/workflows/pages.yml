@@ -26,6 +26,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Test PDF backups
+        run: npm test
       - name: Build
         run: npm run build
       - name: Upload Pages artifact

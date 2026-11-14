@@ -8,6 +8,7 @@
     "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "node --test tests/pdf-backup.test.mjs",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write ."
   },

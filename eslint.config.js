@@ -16,6 +16,10 @@ export default defineConfig(
     languageOptions: { globals: globals.browser },
   },
   {
+    files: ["tests/**/*.mjs"],
+    languageOptions: { globals: globals.node },
+  },
+  {
     files: ["**/*.svelte", "**/*.svelte.ts"],
     languageOptions: {
       parserOptions: { parser: ts.parser, svelteConfig },

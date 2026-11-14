@@ -4,6 +4,8 @@
   import EntryInput from "../components/EntryInput.svelte";
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
   import PageIntro from "../components/PageIntro.svelte";
+  import PdfActions from "../components/PdfActions.svelte";
+  import { subscriptionsReport } from "./report";
   import { parseNumber, today } from "../calendar";
   import { money, uid } from "../lib/format";
   import { monthLabel, shiftMonth } from "../lib/months";
@@ -298,4 +300,21 @@
       </details>
     {/if}
   </section>
+  <PdfActions
+    category="subscriptions"
+    getData={() => $state.snapshot(rows)}
+    report={subscriptionsReport}
+    description="A PDF a korábbi, az aktív és a később induló havidíjakat is menti, a teljes érvényességi időszakukkal együtt."
+    logLabel="Havidíjak (PDF)"
+    detailedLabel="Havidíjak és összesítés (PDF)"
+    parse={(value) => (validSubscriptions(value) ? value : null)}
+    describe={(saved) =>
+      `${saved.length} havidíj, a díjak és az érvényességi időszakok`}
+    onrestore={(saved) => {
+      if (!disk.save(saved)) return false;
+      rows = saved;
+      reset();
+      return true;
+    }}
+  />
 </div>

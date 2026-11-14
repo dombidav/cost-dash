@@ -7,18 +7,14 @@
   import { storage } from "../lib/storage.svelte";
   import { categoryIds, type MonthReport, type Sources } from "./data";
   import { carPayments } from "./schedule";
+  import { BUDGET_KEY, validBudget } from "./state";
 
   let {
     row,
     sources,
     now,
   }: { row: MonthReport; sources: Sources; now: string } = $props();
-  const disk = storage<number | null>(
-    "rezsipont.dashboard.budget.v1",
-    () => null,
-    (value): value is number | null =>
-      value === null || (nonnegative(value) && value > 0),
-  );
+  const disk = storage<number | null>(BUDGET_KEY, () => null, validBudget);
   let budget = $state(disk.data);
   let draft = $state(disk.data?.toString() ?? "");
   let feedback = $state("");

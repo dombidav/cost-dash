@@ -1,4 +1,12 @@
-export type Category = "gas" | "electricity";
+export const backupCategories = {
+  gas: { label: "Gáz", slug: "gaz" },
+  electricity: { label: "Áram", slug: "aram" },
+  water: { label: "Víz", slug: "viz" },
+  car: { label: "Autó", slug: "auto" },
+  subscriptions: { label: "Havidíjak", slug: "havidijak" },
+  dashboard: { label: "Dashboard", slug: "teljes-mentes" },
+} as const;
+export type Category = keyof typeof backupCategories;
 
 export const ATTACHMENT_NAME = "rezsipont-adatok.json";
 const FORMAT = "rezsipont-backup";
@@ -36,15 +44,16 @@ export function restore<T>(
   }
   if (
     !("category" in envelope) ||
-    (envelope.category !== "gas" && envelope.category !== "electricity")
+    typeof envelope.category !== "string" ||
+    !Object.hasOwn(backupCategories, envelope.category)
   ) {
     throw new Error("A mentés kategóriája ismeretlen.");
   }
   if (envelope.category !== category) {
+    const { label } = backupCategories[envelope.category as Category];
+    const article = /^[aáeéiíoóöőuúüű]/iu.test(label) ? "Az" : "A";
     throw new Error(
-      envelope.category === "gas"
-        ? "Ez gázmentés. A Gáz oldalon töltheted vissza."
-        : "Ez árammentés. Az Áram oldalon töltheted vissza.",
+      `Ez ${label} mentés. ${article} ${label} oldalon töltheted vissza.`,
     );
   }
   let data: T | null = null;
@@ -54,6 +63,6 @@ export function restore<T>(
     // State validators can reject malformed nested properties by throwing.
   }
   if (data === null)
-    throw new Error("A mentés érvénytelen kalkulátoradatokat tartalmaz.");
+    throw new Error("A mentés érvénytelen alkalmazásadatokat tartalmaz.");
   return data;
 }

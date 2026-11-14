@@ -26,7 +26,7 @@ A további statikus oldalak: `viz.html`, `auto.html`, `havidijak.html` és `dash
 
 A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-számításokat, a `vite.config.ts` a buildet állítja be. Szigorú TypeScript-típusellenőrzés, Terser-tömörítés három optimalizálási menettel, névrövidítéssel és megjegyzéseltávolítással; tömörített CSS, production sourcemap nélkül. A Chart.js a grafikonokhoz szükséges elemekkel, külön chunkban töltődik be. A `.gitignore` kizárja a függőségeket, buildet, helyi környezeti és ideiglenes fájlokat.
 
-Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja.
+Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja. Az `npm test` a PDF-mentések teljes oda-vissza adatmegőrzését, validálását és a többkategóriás visszaállítás hibakezelését ellenőrzi; a Pages workflow ezt is futtatja.
 
 ## GitHub Pages deployment
 
@@ -36,7 +36,7 @@ Egyszeri beállítás a [repo Pages-beállításaiban](https://github.com/dombid
 
 A várható publikus cím: https://dombidav.github.io/cost-dash/. Mind a hat HTML-oldal közvetlenül elérhető, például a Dashboard a `dashboard.html` útvonalon. A Vite `base: "./"` beállítása és a relatív navigáció miatt az assetek, a PDF-betűtípusok és a PDF-import worker a `/cost-dash/` alkönyvtárból is betöltődnek; nincs szükség SPA fallbackre vagy külön `gh-pages` ágra.
 
-A helyi böngészőadatok nem kerülnek át automatikusan a localhostról az új címre. A gáz- és áramadatok a PDF-export és -visszaállítás segítségével vihetők át. A localStorage originenként közös, ezért az azonos `dombidav.github.io` domainen futó más appokkal azonos tárhelyen lesznek.
+A helyi böngészőadatok nem kerülnek át automatikusan a localhostról az új címre. A Dashboard teljes PDF-mentésével az egész app adatai átvihetők. A localStorage originenként közös, ezért az azonos `dombidav.github.io` domainen futó más appokkal azonos tárhelyen lesznek.
 
 A workflow a [Vite hivatalos GitHub Pages útmutatójára](https://vite.dev/guide/static-deploy#github-pages) épül; a GitHub Actions lépések teljes commit SHA-ra vannak rögzítve.
 
@@ -46,6 +46,16 @@ A workflow a [Vite hivatalos GitHub Pages útmutatójára](https://vite.dev/guid
 - **Autó:** minden autóhoz egyedi nevet vagy rendszámot és külön naplót adhatsz. A Dashboard az autók kiadásait összeadja. A fizetett összegek a fizetés dátumára kerülnek. Kilométeróra-állás tankoláshoz és egyszeri kiadáshoz is menthető. Ha az előző tankolásnak van óraállása, a megtett út és az új óraállás egymásból frissül. Összesített l/100 km = 100 × összes liter / összes kilométer, csak a tele tankolások közötti megjelölt utakra. Ha csak literár ismert, liter = fizetett összeg / literár. A futáshoz köthető becsült értékvesztés külön szerepel.
 - **Havidíjak:** a tétel az első és az utolsó megadott hónapban is esedékes. Díjemeléskor a lezárt régi és az új áras tétel külön őrzi meg az időszakokat.
 - **Dashboard:** az ismert tételeket adja össze naptári hónaponként és évenként; a folyó év az aktuális hónapig látható. A gáz- és áramdíjak a hónapot lefedő mérések, az egyező időszaki adatok vagy az aktuális havi részszámla alapján becsültek. A kategóriák becslései és rögzített kifizetései eltérő jelölést kapnak.
+
+### PDF-export és visszaállítás
+
+Mind a hat oldalon van PDF-export és visszaállítás. A vízmentés a vízóraállásokat, a korábbi havi tételeket és a díjbeállításokat tartalmazza. Az autómentés minden autót ment, a tankolásokkal, kiadásokkal, ütemezett díjakkal és adóbeállításokkal együtt. A havidíjmentés a korábbi, aktív és jövőbeli tételeket is megőrzi.
+
+A **Dashboard → Teljes mentés (PDF)** az egész alkalmazás minden tárolt adatát menti: gáz, áram, víz, autók, havidíjak és havi keret, a beállításokkal és mentett piszkozatokkal együtt. Mindkét Dashboard-export teljes adatmentést tartalmaz; a kiválasztott év és hónap csak az olvasható kimutatást szűri. A teljes mentés nem vágja le a régi naplóbejegyzéseket. A gáz- és áramoldal saját, 120 méréses naplókorlátja továbbra is érvényes az adott oldal használatakor.
+
+Az adatmentés a PDF `rezsipont-adatok.json` csatolmányában található; a PDF-et eredeti formájában őrizd meg, mert az újranyomtatás eltávolíthatja a csatolmányt. A visszaállítás a RezsiPont által exportált PDF-ekből működik, szolgáltatói számlák beolvasását nem végzi. A korábbi gáz- és árammentések továbbra is visszaállíthatók a saját oldalukon.
+
+Import előtt megjelenik a mentés tartalma, és az **Adatok cseréje** gombbal kell jóváhagyni a cserét. A külön oldalak a saját adataikat, a Dashboard a teljes appot cseréli le; a teljes mentésben üres kategória az aktuális adatokat is kiüríti. Sérült, ismeretlen verziójú, más kategóriájú vagy érvénytelen adatú PDF nem kerül mentésre. A beolvasás óta módosult adatok esetén újra ki kell választani a PDF-et. Sikertelen többkategóriás mentéskor az alkalmazás megkísérli az addigi írások visszaállítását, és jelzi, ha ez nem sikerül teljesen. Az import legfeljebb 50 MB-os PDF-et fogad el.
 
 ### Gáz
 

@@ -32,11 +32,18 @@ export async function writeReport(
   const ink = rgb(0.1, 0.15, 0.19);
   const secondary = rgb(0.29, 0.35, 0.4);
   const divider = rgb(0.88, 0.91, 0.93);
-  const accent =
-    category === "gas" ? rgb(0.12, 0.34, 0.2) : rgb(0.13, 0.32, 0.56);
-  const title = report.period
-    ? "Fogyasztás és statisztikák"
-    : "Fogyasztási napló";
+  const accents = {
+    gas: rgb(0.12, 0.34, 0.2),
+    electricity: rgb(0.13, 0.32, 0.56),
+    water: rgb(0.05, 0.36, 0.45),
+    car: rgb(0.55, 0.27, 0.1),
+    subscriptions: rgb(0.4, 0.25, 0.55),
+    dashboard: rgb(0.13, 0.32, 0.4),
+  };
+  const accent = accents[category];
+  const title =
+    report.title ??
+    (report.period ? "Fogyasztás és statisztikák" : "Fogyasztási napló");
   pdf.setTitle(`RezsiPont | ${report.category} | ${title}`);
   pdf.setCreator("RezsiPont");
   pdf.setLanguage("hu-HU");
@@ -79,7 +86,7 @@ export async function writeReport(
       color: accent,
     });
     text("RezsiPont", margin, height - 43, 11, bold, accent);
-    text(title, margin, height - 73, 23, bold);
+    text(printable(title), margin, height - 73, 23, bold);
     text(
       `${report.category}  |  Készült: ${date}`,
       margin,
@@ -90,7 +97,9 @@ export async function writeReport(
     );
     if (report.period) {
       text(
-        `Kedvezményes év: ${report.period}`,
+        printable(
+          `${report.periodLabel ?? "Kedvezményes év"}: ${report.period}`,
+        ),
         margin,
         height - 112,
         10,
@@ -108,48 +117,66 @@ export async function writeReport(
     heading();
     return true;
   }
+  function wrap(value: string, font: PDFFont, size: number, width: number) {
+    const lines: string[] = [];
+    let current = "";
+    for (const word of printable(value).split(" ")) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(candidate, size) <= width) {
+        current = candidate;
+        continue;
+      }
+      if (current) lines.push(current);
+      current = "";
+      for (const char of word) {
+        if (current && font.widthOfTextAtSize(current + char, size) > width) {
+          lines.push(current);
+          current = "";
+        }
+        current += char;
+      }
+    }
+    lines.push(current);
+    return lines;
+  }
   function line(value: string, size: number, font: PDFFont, color = ink) {
-    const safe = printable(value);
-    let end = safe.length;
-    while (
-      end > 0 &&
-      font.widthOfTextAtSize(
-        safe.slice(0, end) + (end < safe.length ? "…" : ""),
-        size,
-      ) > bodyWidth
-    )
-      end--;
-    text(
-      safe.slice(0, end) + (end < safe.length ? "…" : ""),
-      margin,
-      y,
-      size,
-      font,
-      color,
-    );
-    y -= size + 7;
+    for (const part of wrap(value, font, size, bodyWidth)) {
+      ensureSpace(size + 7);
+      text(part, margin, y, size, font, color);
+      y -= size + 7;
+    }
   }
   function statistics(stats: ReportStatistics) {
     for (const [label, value] of stats.rows) {
-      const safeLabel = printable(label),
-        safeValue = printable(value);
-      text(safeLabel, margin + 8, y, 10);
-      text(
-        safeValue,
-        width - margin - 8 - bold.widthOfTextAtSize(safeValue, 10),
-        y,
-        10,
-        bold,
+      const labels = wrap(label, regular, 10, bodyWidth * 0.6 - 16);
+      const values = wrap(value, bold, 10, bodyWidth * 0.4 - 16);
+      const rowHeight = Math.max(labels.length, values.length) * 14 + 5;
+      ensureSpace(rowHeight);
+      labels.forEach((part, index) =>
+        text(part, margin + 8, y - index * 14, 10),
       );
-      y -= 19;
+      values.forEach((part, index) =>
+        text(
+          part,
+          width - margin - 8 - bold.widthOfTextAtSize(part, 10),
+          y - index * 14,
+          10,
+          bold,
+        ),
+      );
+      y -= rowHeight;
     }
     if (stats.note) line(stats.note, 9, regular, secondary);
     y -= 6;
   }
 
   heading();
+  if (report.note) {
+    line(report.note, 9, regular, secondary);
+    y -= 10;
+  }
   if (report.summary) {
-    line("Összes mérési pont", 14, bold, accent);
+    line(report.summaryTitle ?? "Összes mérési pont", 14, bold, accent);
     statistics(report.summary);
   }
   for (const meter of report.meters) {
@@ -159,44 +186,68 @@ export async function writeReport(
     line(meter.name, 14, bold, accent);
     if (meter.tariff) line(meter.tariff, 10, regular, secondary);
     if (meter.statistics) statistics(meter.statistics);
-    if (report.period) line("Fogyasztási napló", 11, bold);
+    if (meter.tableTitle) line(meter.tableTitle, 11, bold);
     if (!meter.readings.length) {
-      line("Még nincs rögzített mérőállás.", 10, regular, secondary);
+      line(
+        meter.emptyMessage ?? "Még nincs rögzített mérőállás.",
+        10,
+        regular,
+        secondary,
+      );
       y -= 16;
       continue;
     }
 
-    const columnWidth = bodyWidth / meter.columns.length;
-    const row = (cells: string[], font: PDFFont) => {
-      cells.forEach((cell, i) => {
-        const right = margin + (i + 1) * columnWidth - 8;
-        text(
-          cell,
-          i ? right - font.widthOfTextAtSize(cell, 9) : margin + 8,
-          y,
-          9,
-          font,
+    const weights = meter.columnWeights ?? meter.columns.map(() => 1);
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const widths = weights.map((weight) => (bodyWidth * weight) / totalWeight);
+    const size = 9;
+    const cellsFor = (cells: string[], font: PDFFont) =>
+      cells.map((cell, i) => wrap(cell, font, size, widths[i] - 16));
+    const rowHeight = (cells: string[][]) =>
+      Math.max(...cells.map((parts) => parts.length)) * 13 + 8;
+    const row = (cells: string[][], font: PDFFont) => {
+      let left = margin;
+      cells.forEach((parts, i) => {
+        const rightAligned =
+          (meter.alignments?.[i] ?? (i ? "right" : "left")) === "right";
+        parts.forEach((part, index) =>
+          text(
+            part,
+            rightAligned
+              ? left + widths[i] - 8 - font.widthOfTextAtSize(part, size)
+              : left + 8,
+            y - index * 13,
+            size,
+            font,
+          ),
         );
+        left += widths[i];
       });
-      y -= 21;
+      y -= rowHeight(cells);
     };
+    const header = cellsFor(meter.columns, bold);
+    const headerHeight = rowHeight(header);
     const tableHeader = () => {
       page.drawRectangle({
         x: margin,
-        y: y - 7,
+        y: y - headerHeight + 14,
         width: bodyWidth,
-        height: 22,
+        height: headerHeight,
         color: divider,
       });
-      row(meter.columns, bold);
+      row(header, bold);
     };
+    ensureSpace(headerHeight + rowHeight(cellsFor(meter.readings[0], regular)));
     tableHeader();
     for (const reading of meter.readings) {
-      if (ensureSpace(23)) {
+      const cells = cellsFor(reading, regular);
+      if (y - rowHeight(cells) < 51) {
+        ensureSpace(rowHeight(cells) + headerHeight + 30);
         line(meter.name, 12, bold, accent);
         tableHeader();
       }
-      row(reading.map(printable), regular);
+      row(cells, regular);
       rule(y + 13);
     }
     y -= 14;

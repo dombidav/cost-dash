@@ -30,7 +30,7 @@ import type { AppState } from "../types";
 export type Category = keyof typeof categories;
 export const categoryIds = Object.keys(categories) as Category[];
 export const categoryColorProperty = (id: Category) => `--category-${id}`;
-const keys: Record<Category, string> = {
+export const sourceKeys: Record<Category, string> = {
   gas: GAS_STORAGE_KEY,
   electricity: ELECTRICITY_STORAGE_KEY,
   water: WATER_KEY,
@@ -46,7 +46,7 @@ export function readSources() {
     migrate = (data: unknown) => data,
   ) {
     try {
-      const raw = localStorage.getItem(keys[id]);
+      const raw = localStorage.getItem(sourceKeys[id]);
       if (raw === null) return null;
       const data = migrate(JSON.parse(raw));
       if (validate(data)) return data;

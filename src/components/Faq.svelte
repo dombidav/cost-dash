@@ -62,6 +62,12 @@
 
   const siteQuestions: Question[] = [
     {
+      question: "Hogyan menthetem le az egész alkalmazás adatait?",
+      answer:
+        "A Dashboard alján a Teljes mentés (PDF) minden tárolt naplót, kiadást, beállítást, mentett piszkozatot és a havi keretet is menti. Ugyanott a Visszaállítás PDF-ből gombbal az egész app visszaállítható. A külön oldalak PDF-jei a saját kategóriájukat mentik. Az eredeti PDF-et őrizd meg, hogy az adatcsatolmány is megmaradjon.",
+      link: { href: "./dashboard.html", label: "Dashboard és teljes mentés" },
+    },
+    {
       question: "Hol maradnak a megadott adataim?",
       answer:
         "A mérőállásaid, kiadásaid és beállításaid abban a böngészőben maradnak, amelyikben megadtad őket. Egy e-mailben kapott link másik böngészőben is megnyílhat, ahol a mentett adatok nem látszanak.",
