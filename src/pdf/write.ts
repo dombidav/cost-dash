@@ -4,6 +4,7 @@ import regularUrl from "../assets/pdf/NotoSans-Regular.ttf?url";
 import boldUrl from "../assets/pdf/NotoSans-Bold.ttf?url";
 import { ATTACHMENT_NAME, type Category } from "./backup";
 import type { Report, ReportStatistics } from "./report";
+import { photoFilename, type PhotoAttachment } from "./photos";
 
 async function fontBytes(url: string) {
   const response = await fetch(url);
@@ -16,6 +17,7 @@ export async function writeReport(
   category: Category,
   date: string,
   attachment: Uint8Array,
+  images: PhotoAttachment[] = [],
 ) {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -51,6 +53,12 @@ export async function writeReport(
     mimeType: "application/json",
     description: "RezsiPont mentés visszaállításhoz",
   });
+  for (const image of images) {
+    await pdf.attach(image.bytes, photoFilename(image.id), {
+      mimeType: "image/webp",
+      description: "RezsiPont mérési kép visszaállításhoz",
+    });
+  }
 
   let page = pdf.addPage(PageSizes.A4);
   let y = 0;

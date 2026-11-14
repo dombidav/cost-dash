@@ -28,6 +28,20 @@ A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-s
 
 Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja. Az `npm test` a PDF-mentések teljes oda-vissza adatmegőrzését, validálását és a többkategóriás visszaállítás hibakezelését ellenőrzi; a Pages workflow ezt is futtatja.
 
+## Mérési képek és bizonylatok
+
+A gáz-, áram- és vízmérésekhez, valamint az autós kiadásokhoz egy-egy JPG-, PNG- vagy WebP-fotó csatolható. A Cropper.js 2 szerkesztő az eredeti képen enged szabad oldalarányú vágást, nagyítást és 90°-os forgatást. A szerkesztő csak kép kiválasztásakor töltődik be. A bemenet legfeljebb 15 MiB és 50 megapixel lehet; a HEIC és a PDF közvetlen képcsatolmányként nem támogatott.
+
+Mentéskor legfeljebb 1600 pixeles hosszabbik oldalú WebP készül, 250 kB-os célmérettel. A minőségi lépések 0,78 / 0,68 / 0,58; az olvashatóság megőrzése érdekében a célméret túlléphető, legfeljebb 1 MB-ig. Külön, legfeljebb 320 pixeles bélyegkép készül. Az eredeti fájl csak a szerkesztés idejére marad elérhető, ezért a levágott részek később nem állíthatók vissza.
+
+A mérési adatok továbbra is localStorage-ban maradnak, és opcionális `photoId` hivatkozást kapnak. A `rezsipont-photos` IndexedDB-adatbázis külön `images` és `thumbnails` tárolóban őrzi a két változatot. Először a képpár mentődik egy tranzakcióban, majd a mérési hivatkozás; sikertelen adatmentéskor az új képpár törlődik. A már nem hivatkozott képek takarítása késleltetett, és helyben elérhető visszavonás esetén várakozik.
+
+A WebP támogatását tényleges canvas-kódolás ellenőrzi, böngészőnév-vizsgálat nélkül. A PNG-re visszaeső kódolás sikertelennek számít. Ilyenkor a feltöltés eltűnik, és megjelenik a tájékoztató dialog; a „Ne jelenjen meg többször” választás a `rezsipont.photos.hide-unsupported.v1` localStorage-kulcsba kerül. Az importált képek megtekintése és továbbexportálása WebP-kódolás nélkül is működik, ha a böngésző meg tudja jeleníteni őket.
+
+Mindkét PDF-export megőrzi a képeket külön WebP-csatolmányként. A képes mentés 2-es formátumverziót használ; a korábbi, kép nélküli mentések továbbra is visszaállíthatók. Importkor ellenőrizzük a hivatkozásokat és a csatolmányokat, új képazonosítókat és bélyegképeket készítünk. A PDF fájlméretkorlátja 200 MiB; nagy adatállománynál oldalankénti export használható. A képek PDF-csatolmányok, nem a kimutatás látható oldalaira helyezett fotók.
+
+Az `npm test` a képtárolás, a hibás mentések visszagörgetése és a képes PDF-csatolmányok adatmegőrzése mellett a korábbi mentéseket is ellenőrzi. A futó fejlesztői szerveren a `/tests/browser/unsupported-photos.html` tesztoldal a WebP helyetti PNG-kimenetet szimulálja; így tesztelhető a dialog és az elnémítás valódi Safari-eszköz nélkül. A fixture a normál fejlesztői origin helyi adatait használja, ezért külön teszt-böngészőprofilban nyisd meg.
+
 ## GitHub Pages deployment
 
 A `.github/workflows/pages.yml` workflow a `master` ágra történő push esetén Node.js 24 alatt telepíti a rögzített függőségeket (`npm ci`), futtatja a lintet és a típusellenőrzést is tartalmazó buildet, majd a `dist/` tartalmát publikálja GitHub Pagesre. A `master` ágra nyitott pull requesteknél ugyanezek az ellenőrzések futnak. A deployment kézzel is indítható az Actions → GitHub Pages → Run workflow menüből, a `master` ágat kiválasztva.

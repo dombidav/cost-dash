@@ -401,7 +401,7 @@
     report={(data, detailed) =>
       dashboardReport(data, detailed, year, monthIndex)}
     parse={parseAppBackup}
-    description="Teljes appmentés: minden gáz-, áram-, víz-, autó- és havidíjadat, beállítás, mentett piszkozat és a havi keret is bekerül a PDF-be. Mindkét export a teljes adatállományt menti, a kiválasztott kimutatási időszaktól függetlenül."
+    description="Teljes appmentés: minden gáz-, áram-, víz-, autó- és havidíjadat, csatolt kép, beállítás, mentett piszkozat és a havi keret is bekerül a PDF-be. Mindkét export a teljes adatállományt menti, a kiválasztott kimutatási időszaktól függetlenül."
     logLabel="Teljes mentés (PDF)"
     detailedLabel="Teljes mentés és havi kimutatás (PDF)"
     restoreScope="a teljes app összes jelenlegi adatát és beállítását, a havi keretet is beleértve. A mentésben üres kategóriák jelenlegi adatai is törlődnek"

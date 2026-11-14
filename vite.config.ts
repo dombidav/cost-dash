@@ -5,6 +5,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 export default defineConfig({
   base: "./",
   plugins: [svelte()],
+  optimizeDeps: { include: ["cropperjs"] },
   build: {
     target: "es2022",
     minify: "terser",

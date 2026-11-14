@@ -5,6 +5,7 @@ import "fake-indexeddb/auto";
 
 test("photo storage commits both variants and protects existing data on failure", async (t) => {
   const server = await createServer({
+    cacheDir: `tmp/vite-photo-tests-${process.pid}`,
     server: { middlewareMode: true, ws: false },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
@@ -25,6 +26,12 @@ test("photo storage commits both variants and protects existing data on failure"
   };
   const id = await putPhoto(photo);
   assert.equal(await (await getPhoto(id)).text(), "full");
+  await assert.rejects(
+    putPhotos([
+      { ...photo, id: "failed-pair", thumbnail: () => {}, created: 1 },
+    ]),
+  );
+  await assert.rejects(getPhoto("failed-pair"), /nem található/);
   assert.equal(await (await getPhoto(id, true)).text(), "thumb");
   let rejectedId;
   await assert.rejects(
@@ -53,6 +60,7 @@ test("photo storage commits both variants and protects existing data on failure"
 
 test("WebP capability rejects silent PNG fallback", async (t) => {
   const server = await createServer({
+    cacheDir: `tmp/vite-capability-tests-${process.pid}`,
     server: { middlewareMode: true, ws: false },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },

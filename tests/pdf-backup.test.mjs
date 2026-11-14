@@ -8,6 +8,7 @@ import { GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 test("PDF backups preserve app data and reject unsafe restores", async (t) => {
   const server = await createServer({
+    cacheDir: `tmp/vite-pdf-tests-${process.pid}`,
     server: { middlewareMode: true, ws: false },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
@@ -18,6 +19,7 @@ test("PDF backups preserve app data and reject unsafe restores", async (t) => {
     "pdf/backup",
     "pdf/read",
     "pdf/write",
+    "pdf/photos",
     "gas/state",
     "gas/report",
     "electricity/calculator",
@@ -37,6 +39,8 @@ test("PDF backups preserve app data and reject unsafe restores", async (t) => {
     backup,
     restore,
     readBackup,
+    readBackupBundle,
+    validatePhotoAttachments,
     writeReport,
     initialGas,
     initialState,
@@ -318,6 +322,50 @@ test("PDF backups preserve app data and reject unsafe restores", async (t) => {
             );
           }
         }
+        const photoGas = structuredClone(gas);
+        photoGas.readings[0].photoId = "test-image";
+        const imageBytes = new Uint8Array(
+          Buffer.from(
+            "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+            "base64",
+          ),
+        );
+        const images = [{ id: "test-image", bytes: imageBytes }];
+        const bytes = await writeReport(
+          modules.gasReport(photoGas, false),
+          "gas",
+          "2026-11-14",
+          backup("gas", photoGas),
+          images,
+        );
+        const bundle = await readBackupBundle(
+          new File([bytes], "photos.pdf", { type: "application/pdf" }),
+        );
+        assert(bundle);
+        assert.deepEqual(bundle.images, images);
+        assert.deepEqual(
+          restore(bundle.content, "gas", (value) =>
+            modules.validGas(value) ? value : null,
+          ),
+          photoGas,
+        );
+        assert.equal(
+          JSON.parse(new TextDecoder().decode(bundle.content)).version,
+          2,
+        );
+        validatePhotoAttachments(photoGas, bundle.images);
+        assert.throws(() => validatePhotoAttachments(photoGas, []), /hiányzik/);
+        assert.throws(
+          () => validatePhotoAttachments(photoGas, [...images, ...images]),
+          /ismétlődnek/,
+        );
+        assert.throws(
+          () =>
+            validatePhotoAttachments(photoGas, [
+              { id: "test-image", bytes: new Uint8Array(12) },
+            ]),
+          /érvénytelen/,
+        );
       } finally {
         globalThis.fetch = originalFetch;
       }

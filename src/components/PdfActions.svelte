@@ -11,6 +11,14 @@
   import type { Report } from "../pdf/report";
   import { pdfStatusMessages } from "../pdf/status";
   import { ui } from "../lib/ui.svelte";
+  import {
+    collectPhotoAttachments,
+    validatePhotoAttachments,
+    preparePhotoRestore,
+    BACKUP_MAX,
+    type PhotoAttachment,
+  } from "../pdf/photos";
+  import { photoIds, putPhotos, deletePhotos } from "../lib/photos";
 
   let {
     category,
@@ -41,7 +49,7 @@
   let input: HTMLInputElement;
   let restoreButton: HTMLButtonElement;
   let cancelButton = $state<HTMLButtonElement>();
-  let operation = $state<"generate" | "read" | null>(null);
+  let operation = $state<"generate" | "read" | "restore" | null>(null);
   let busy = $derived(operation !== null);
   let statusIndex = $state(0);
   let meterCategory = $derived(
@@ -54,6 +62,7 @@
     description: string;
     removed: number;
     current: string;
+    images: PhotoAttachment[];
   } | null>(null);
   $effect(() => {
     if (!operation) return;
@@ -72,13 +81,17 @@
       const data = getData();
       limit(data);
       const date = today();
+      const images = await collectPhotoAttachments(data);
       const { writeReport } = await import("../pdf/write");
       const bytes = await writeReport(
         report(data, detailed),
         category,
         date,
         backup(category, data),
+        images,
       );
+      if (bytes.length > BACKUP_MAX)
+        throw new Error("A PDF túl nagy. Exportáld az oldalakat külön-külön.");
       const url = URL.createObjectURL(
         new Blob([Uint8Array.from(bytes).buffer], { type: "application/pdf" }),
       );
@@ -108,32 +121,37 @@
     if (!file || busy) return;
     pending = null;
     error = message = "";
-    if (file.size > 50 * 1024 * 1024) {
-      error = "Legfeljebb 50 MB-os PDF tölthető vissza.";
+    if (file.size > BACKUP_MAX) {
+      error = "Legfeljebb 200 MB-os PDF tölthető vissza.";
       return;
     }
     operation = "read";
     try {
-      const { readBackup } = await import("../pdf/read");
-      const content = await readBackup(file);
-      if (!content) {
+      const { readBackupBundle } = await import("../pdf/read");
+      const bundle = await readBackupBundle(file);
+      if (!bundle) {
         error = "A PDF-ben nincs RezsiPont-adatcsatolmány.";
         return;
       }
       try {
-        const data = restore(content, category, parse);
+        const data = restore(bundle.content, category, parse);
+        validatePhotoAttachments(data, bundle.images);
         const removed = limit(data);
         pending = {
           data,
-          description: describe(data),
+          description: `${describe(data)}${photoIds(data).length ? `, ${photoIds(data).length} csatolt kép` : ""}`,
           removed,
           current: JSON.stringify(getData()),
+          images: bundle.images,
         };
       } catch (reason) {
         error = (reason as Error).message;
       }
-    } catch {
-      error = "A fájl nem olvasható PDF-ként.";
+    } catch (reason) {
+      error =
+        reason instanceof Error
+          ? reason.message
+          : "A fájl nem olvasható PDF-ként.";
     } finally {
       operation = null;
       await tick();
@@ -148,32 +166,59 @@
   }
 
   async function closeRestore() {
+    if (busy) return;
     pending = null;
     error = "";
     await tick();
     restoreButton.focus();
   }
 
-  function apply() {
+  async function apply() {
     if (!pending || busy) return;
+    const selected = pending;
+    operation = "restore";
+    let importedIds: string[] = [];
     try {
-      if (JSON.stringify(getData()) !== pending.current) {
+      if (JSON.stringify(getData()) !== selected.current) {
         error =
           "Az adatok a PDF beolvasása óta megváltoztak. Válaszd ki újra a PDF-et a visszaállításhoz.";
         return;
       }
-      if (!onrestore(pending.data)) {
-        error = "A visszaállított adatokat nem sikerült helyben menteni.";
-        return;
-      }
+      const prepared = await preparePhotoRestore(
+        selected.data,
+        selected.images,
+      );
+      await putPhotos(prepared.photos);
+      importedIds = prepared.photos.map((photo) => photo.id);
+      if (JSON.stringify(getData()) !== selected.current)
+        throw new Error(
+          "Az adatok a visszaállítás közben megváltoztak. Válaszd ki újra a PDF-et.",
+        );
+      if (!onrestore(prepared.data))
+        throw new Error(
+          "A visszaállított adatokat nem sikerült helyben menteni.",
+        );
+      importedIds = [];
     } catch (reason) {
+      if (importedIds.length) {
+        // A full metadata restore can report an incomplete rollback; preserve
+        // any images already referenced by the surviving data in that case.
+        try {
+          const referenced = new Set(photoIds(getData()));
+          await deletePhotos(importedIds.filter((id) => !referenced.has(id)));
+        } catch {
+          /* Keep images when the surviving state cannot be inspected. */
+        }
+      }
       error =
         reason instanceof Error
           ? reason.message
           : "A visszaállítás nem sikerült.";
       return;
+    } finally {
+      operation = null;
     }
-    const { removed } = pending;
+    const { removed } = selected;
     ui.undo = null;
     void closeRestore();
     message = removed
@@ -189,6 +234,10 @@
       (meterCategory
         ? `Mentsd el a méréseidet PDF-ben, hogy később is visszaállíthasd őket. Az oldal a legutóbbi ${READING_LIMIT} mérést őrzi meg.`
         : "Mentsd el az adatokat és beállításokat PDF-ben, hogy később visszaállíthasd őket.")}
+  </p>
+  <p class="photo-backup-note">
+    A csatolt képek is bekerülnek a PDF-be, és visszaállításkor újra megjelennek
+    a naplóban.
   </p>
   <div class="actions">
     <button type="button" aria-disabled={busy} onclick={() => download(false)}
@@ -228,6 +277,7 @@
         <button
           type="button"
           bind:this={cancelButton}
+          disabled={busy}
           aria-describedby={`${category}-restore-summary`}
           onclick={closeRestore}>Mégse</button
         >
@@ -242,13 +292,15 @@
   {/if}
   <p class="feedback" role="alert">{error}</p>
   <p class="feedback" role="status">
-    {operation === "generate"
-      ? "PDF generálása folyamatban."
-      : operation === "read"
-        ? "PDF beolvasása folyamatban."
-        : pending
-          ? "A PDF adatai készen állnak a visszaállításra."
-          : message}
+    {operation === "restore"
+      ? "Adatok és képek visszaállítása folyamatban."
+      : operation === "generate"
+        ? "PDF generálása folyamatban."
+        : operation === "read"
+          ? "PDF beolvasása folyamatban."
+          : pending
+            ? "A PDF adatai készen állnak a visszaállításra."
+            : message}
   </p>
   {#if operation}
     <p aria-hidden="true">{pdfStatusMessages[statusIndex]}</p>

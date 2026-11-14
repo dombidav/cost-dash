@@ -1,3 +1,5 @@
+import { photoIds } from "../lib/photos";
+
 export const backupCategories = {
   gas: { label: "Gáz", slug: "gaz" },
   electricity: { label: "Áram", slug: "aram" },
@@ -14,7 +16,12 @@ const VERSION = 1;
 
 export function backup(category: Category, data: unknown) {
   return new TextEncoder().encode(
-    JSON.stringify({ format: FORMAT, version: VERSION, category, data }),
+    JSON.stringify({
+      format: FORMAT,
+      version: photoIds(data).length ? 2 : VERSION,
+      category,
+      data,
+    }),
   );
 }
 
@@ -39,7 +46,10 @@ export function restore<T>(
   ) {
     throw new Error("A PDF csatolmánya nem RezsiPont-mentés.");
   }
-  if (!("version" in envelope) || envelope.version !== VERSION) {
+  if (
+    !("version" in envelope) ||
+    (envelope.version !== VERSION && envelope.version !== 2)
+  ) {
     throw new Error("A mentés verzióját ez a RezsiPont-verzió nem támogatja.");
   }
   if (
@@ -64,5 +74,6 @@ export function restore<T>(
   }
   if (data === null)
     throw new Error("A mentés érvénytelen alkalmazásadatokat tartalmaz.");
+  photoIds(data);
   return data;
 }
