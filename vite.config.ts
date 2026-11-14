@@ -1,10 +1,11 @@
 import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { offlineApp } from "./build/pwa.ts";
 
 export default defineConfig({
   base: "./",
-  plugins: [svelte()],
+  plugins: [svelte(), offlineApp()],
   optimizeDeps: { include: ["cropperjs"] },
   build: {
     target: "es2022",

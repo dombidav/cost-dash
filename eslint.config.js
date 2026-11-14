@@ -20,6 +20,10 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
+    files: ["build/service-worker.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     files: ["**/*.svelte", "**/*.svelte.ts"],
     languageOptions: {
       parserOptions: { parser: ts.parser, svelteConfig },

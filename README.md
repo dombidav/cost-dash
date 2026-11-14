@@ -28,6 +28,18 @@ A `src/` könyvtár tartalmazza a Svelte-komponenseket és a tiszta TypeScript-s
 
 Az `npm run lint` az ESLint és a Prettier ellenőrzését is futtatja. Az `npm run format` a Prettier alapbeállításaival formázza a forrásfájlokat. A `npm run typecheck` önálló fordítói ellenőrzés; a build ezt automatikusan futtatja. Az `npm test` a PDF-mentések teljes oda-vissza adatmegőrzését, validálását és a többkategóriás visszaállítás hibakezelését ellenőrzi; a Pages workflow ezt is futtatja.
 
+## Telepíthető, offline alkalmazás (PWA)
+
+A production build HTTPS alatt (helyi teszteléshez localhoston is) PWA-ként telepíthető a telepítést támogató Chromium-böngészőkben, például Androidon Chrome-mal, Windowson Chrome-mal vagy Edge-dzsel. A FAQ után minden oldalon megjelenő, dashboard-ikonos, lila CTA a böngésző telepítési ablakát nyitja meg. A telepített app a Dashboardon indul. Az adatok és fotók ugyanazon böngészőprofil és webcím helyi tárhelyén maradnak, export–import nélkül.
+
+A `build/pwa.ts` minden build végén a teljes `dist/` tartalmából verziózott `sw.js` fájlt készít. A service worker előre letölti az összes aloldalt, lazy JavaScript- és CSS-modult, grafikont, képszerkesztőt, PDF-generátort, PDF-olvasót, PDF-workert és betűtípust. Csak a teljes csomag sikeres letöltése és aktiválása után kapcsoljuk be a telepíthetőséget: ekkor kerül az oldalba a manifest, és a CTA gombja is csak ekkor használható. Az app minden saját funkciója offline működik az első használatkor is; a külső forráshivatkozások megnyitásához internet kell. Az offline csomagban csak az app erőforrásai vannak, személyes adatot nem töltünk fel.
+
+A frissítés a háttérben tölti le az új, teljes csomagot. Sikertelen letöltéskor a korábbi verzió marad használható. Az elkészült frissítésről az oldal alján értesítés jelenik meg; az új verzió az összes régi RezsiPont-lap és -ablak bezárása után aktiválódik, így nem cserélünk modult folyamatban lévő szerkesztés alatt. A frissítés nem törli a localStorage- vagy IndexedDB-adatokat. A telepített app tartós tárhelyengedélyt is kér a böngészőtől, ha elérhető; a webhelyadatok kézi törlése továbbra is törli a mentéseket és az offline csomagot.
+
+iPhone-on, iPaden, minden Macen (Chrome/Edge alatt is) és Safariban nem kapcsolunk be manifestet, service workert vagy telepítési CTA-t. A webes változat használható marad. A böngésző saját, tetszőleges weboldalhoz kínált könyvjelző-/Dock-parancsát egy weboldal nem tudja letiltani. A PWA fejlesztői módban szándékosan ki van kapcsolva; ellenőrzéshez `npm run build` és `npm run preview` szükséges. A relatív scope és erőforrásutak GitHub Pages projekt-alkönyvtárban is működnek.
+
+Az `npm test` a teljes előtöltés, az offline útvonalkezelés, a sikertelen telepítés, a frissítési cache-ek elkülönítése, a platformkizárások és a manifest ikonjainak regressziós ellenőrzését is futtatja.
+
 ## Mérési képek és bizonylatok
 
 A gáz-, áram- és vízmérésekhez, valamint az autós kiadásokhoz egy-egy JPG-, PNG- vagy WebP-fotó csatolható. A Cropper.js 2 szerkesztő az eredeti képen enged szabad oldalarányú vágást, nagyítást és 90°-os forgatást. A szerkesztő csak kép kiválasztásakor töltődik be. A bemenet legfeljebb 15 MiB és 50 megapixel lehet; a HEIC és a PDF közvetlen képcsatolmányként nem támogatott.

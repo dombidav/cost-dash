@@ -2,6 +2,7 @@
   import { tick, untrack } from "svelte";
   import Header from "./components/Header.svelte";
   import Faq from "./components/Faq.svelte";
+  import InstallApp from "./components/InstallApp.svelte";
   import PhotoSupportDialog from "./components/PhotoSupportDialog.svelte";
   import { ui } from "./lib/ui.svelte";
   import { currentPage, pages as navigation } from "./lib/pages";
@@ -129,6 +130,7 @@
   {:then Page}
     <Page.default />
     <Faq {id} />
+    <InstallApp />
   {:catch}
     <p class="notice danger" role="alert">
       A kalkulátor nem tölthető be. Töltsd újra az oldalt.
