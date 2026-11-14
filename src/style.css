@@ -52,6 +52,8 @@
   color: var(--text);
 }
 .photo-actions .primary-button {
+  width: auto;
+  margin: 0;
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
@@ -85,6 +87,21 @@
 }
 .reading-photo small {
   color: var(--muted);
+}
+.history-card .row-actions .reading-photo {
+  max-width: 180px;
+}
+@media (max-width: 599px) {
+  .history-card .row-actions {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+  .history-card .row-actions .reading-photo {
+    max-width: none;
+  }
+  .photo-dialog {
+    padding: 16px;
+  }
 }
 .photo-thumb {
   padding: 0;

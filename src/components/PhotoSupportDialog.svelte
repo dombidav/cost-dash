@@ -55,7 +55,7 @@
       Átválthatsz másik böngészőre, pl. Mozilla Firefox-ra
       <p class="photo-transfer">
         <span aria-hidden="true">↳</span><span
-          >Ebben az esetben érdemes a <a href="/dashboard.html">Dashboard</a
+          >Ebben az esetben érdemes a <a href="./dashboard.html">Dashboard</a
           >-ról exportálnod az alkalmazásba mentett adataidat, és azt betölteni
           az új böngészőben. Így onnan folytathatod ahol abba hagytad</span
         >

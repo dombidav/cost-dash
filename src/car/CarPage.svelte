@@ -314,10 +314,13 @@
     toast(
       "A tételt törölted.",
       () => {
-        owner.entries = [
-          ...owner.entries.slice(0, index),
+        const target = data.cars.find((entry) => entry.id === owner.id);
+        if (!target || target.entries.some((entry) => entry.id === item.id))
+          return;
+        target.entries = [
+          ...target.entries.slice(0, index),
           item,
-          ...owner.entries.slice(index),
+          ...target.entries.slice(index),
         ];
         disk.save(data);
       },

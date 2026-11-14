@@ -32,7 +32,7 @@ export function storage<T>(
       return warning;
     },
     onStorage(event: StorageEvent) {
-      if (event.key !== key) return;
+      if (event.key !== null && event.key !== key) return;
       locked = true;
       warning =
         "Az adatok másik böngészőlapon megváltoztak. Töltsd újra az oldalt a mentés folytatásához.";

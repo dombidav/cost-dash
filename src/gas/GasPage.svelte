@@ -727,6 +727,8 @@
   onrestore={(data: AppState) => {
     if (!disk.save(data)) return false;
     model = data;
+    draftPhoto = null;
+    photoError = "";
     draft = { ...data.draft };
     formError = undefined;
     return true;

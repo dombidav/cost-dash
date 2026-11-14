@@ -29,6 +29,9 @@
   } from "./state";
 
   const disk = storage(WATER_KEY, initialWater, validWater, migrateWater);
+  const initialRemoved = trimReadings([disk.data.readings]);
+  if (initialRemoved) disk.save(disk.data);
+  let removedReadings = $state(initialRemoved);
   let data = $state(disk.data);
   let draftPhoto = $state<Photo | null>(null);
   let saving = $state(false);
@@ -58,6 +61,7 @@
       ...data.readings.filter((row) => row.id !== item.id),
       item,
     ];
+    removedReadings += trimReadings([data.readings]);
     disk.save(data);
   }
 
@@ -72,12 +76,13 @@
       await commitPhoto(draftPhoto, (photoId) => {
         const next = $state.snapshot(data);
         next.readings.push({ ...item, ...(photoId ? { photoId } : {}) });
-        trimReadings([next.readings]);
+        const removed = trimReadings([next.readings]);
         if (!next.readings.some((row) => row.id === item.id))
           throw new Error(
             "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
           );
         if (!disk.save(next)) return false;
+        removedReadings += removed;
         data = next;
         return true;
       });
@@ -242,6 +247,7 @@
     id="water-history"
     readingId="water-reading"
     rows={history}
+    {removedReadings}
     unit="m³"
     digits={3}
     columns={["Vízóraállás"]}
@@ -354,6 +360,7 @@
   <WaterExamples {intervals} {now} />
   <PdfActions
     category="water"
+    limit={(saved) => trimReadings([saved.readings])}
     getData={() => $state.snapshot(data)}
     report={waterReport}
     logLabel="Víznapló (PDF)"
@@ -367,6 +374,7 @@
     onrestore={(saved) => {
       if (!disk.save(saved)) return false;
       data = saved;
+      draftPhoto = null;
       date = now;
       value = error = "";
       return true;

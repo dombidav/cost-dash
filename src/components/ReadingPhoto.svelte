@@ -130,7 +130,7 @@
       const selection = cropper.getCropperSelection();
       if (selection) {
         selection.aspectRatio = NaN;
-        selection.$reset();
+        selectFullImage();
       }
       ready = true;
     } catch (reason) {
@@ -143,6 +143,19 @@
     } finally {
       busy = false;
     }
+  }
+  function selectFullImage() {
+    const canvas = cropper?.getCropperCanvas()?.getBoundingClientRect();
+    const image = cropper?.getCropperImage()?.getBoundingClientRect();
+    if (canvas && image)
+      cropper
+        ?.getCropperSelection()
+        ?.$change(
+          image.left - canvas.left,
+          image.top - canvas.top,
+          image.width,
+          image.height,
+        );
   }
   async function save() {
     if (!ready || busy || !cropper) return;
@@ -290,7 +303,7 @@
       disabled={!ready || busy}
       onclick={() => {
         cropper?.getCropperImage()?.$resetTransform().$center("contain");
-        cropper?.getCropperSelection()?.$reset();
+        selectFullImage();
       }}>Visszaállítás</button
     >
   </div>

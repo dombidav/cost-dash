@@ -153,9 +153,15 @@ export async function putPhotos(photos: StoredPhoto[]) {
   const db = await photoDatabase();
   const tx = db.transaction(["images", "thumbnails"], "readwrite");
   const done = complete(tx);
-  for (const { id, image, thumbnail, created } of photos) {
-    tx.objectStore("images").put({ id, image, created });
-    tx.objectStore("thumbnails").put({ id, image: thumbnail });
+  try {
+    for (const { id, image, thumbnail, created } of photos) {
+      tx.objectStore("images").put({ id, image, created });
+      tx.objectStore("thumbnails").put({ id, image: thumbnail });
+    }
+  } catch (reason) {
+    tx.abort();
+    await done.catch(() => {});
+    throw reason;
   }
   await done;
 }
