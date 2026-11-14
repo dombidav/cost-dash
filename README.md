@@ -59,7 +59,7 @@ A workflow a [Vite hivatalos GitHub Pages útmutatójára](https://vite.dev/guid
 - **Víz:** a fogyasztás két dátumozott vízóraállás különbsége. A település, a bruttó egységárak és a havi alapdíj egy helyen állíthatók; az összes becslés a jelenlegi díjakat használja. Az alapdíj naparányos. A korábbi havi tételek megmaradnak, külön a mérési naplótól. A Dashboard a hónapokat átfedő méréseket egyenletes napi fogyasztást feltételezve osztja szét.
 - **Autó:** minden autóhoz egyedi nevet vagy rendszámot és külön naplót adhatsz. A Dashboard az autók kiadásait összeadja. A fizetett összegek a fizetés dátumára kerülnek. Kilométeróra-állás tankoláshoz és egyszeri kiadáshoz is menthető. Ha az előző tankolásnak van óraállása, a megtett út és az új óraállás egymásból frissül. Összesített l/100 km = 100 × összes liter / összes kilométer, csak a tele tankolások közötti megjelölt utakra. Ha csak literár ismert, liter = fizetett összeg / literár. A futáshoz köthető becsült értékvesztés külön szerepel.
 - **Havidíjak:** a tétel az első és az utolsó megadott hónapban is esedékes. Díjemeléskor a lezárt régi és az új áras tétel külön őrzi meg az időszakokat.
-- **Dashboard:** az ismert tételeket adja össze naptári hónaponként és évenként; a folyó év az aktuális hónapig látható. A gáz- és áramdíjak a hónapot lefedő mérések, az egyező időszaki adatok vagy az aktuális havi részszámla alapján becsültek. A kategóriák becslései és rögzített kifizetései eltérő jelölést kapnak.
+- **Dashboard:** a rögzített kifizetéseket, becsült közműdíjakat és ütemezett havidíjakat adja össze naptári hónaponként és évenként. A folyó év az aktuális hónappal együtt látható, teljes havi becslésekkel is. A gáz- és áramdíjak a hónapot lefedő mérések, az egyező időszaki adatok vagy az aktuális havi részszámla alapján becsültek. A kategóriák becslései és rögzített kifizetései eltérő jelölést kapnak. A havi keret különbözete a külön mutatott ütemezett díjak levonása előtti érték; az autós ütemezések és kifizetések átfedhetnek.
 
 ### PDF-export és visszaállítás
 
@@ -78,7 +78,7 @@ Import előtt megjelenik a mentés tartalma, és az **Adatok cseréje** gombbal 
 - Add meg a gázóra teljes állását és a mérés dátumát (alapból a helyi mai nap). A kitöltés mezőelhagyáskor piszkozatként mentődik; a **Mérőállás rögzítése** gomb adja a naplóhoz.
 - A naplóban a dátum és a mérőállás közvetlenül szerkeszthető, mentés mezőelhagyáskor. A törlés 15 másodpercig visszavonható.
 - A dátum szerinti előző és következő mérés is korlátozza az állást. Csökkenő állás, duplikált nap, jövőbeli/érvénytelen dátum, negatív/nem számszerű adat nem menthető. Azonos mérőállás megengedett.
-- Az éves keret augusztus 1. – július 31. között értendő. Évkezdő mérés nélkül a maradék csak felső becslés; az első mérés előtti fogyasztás ismeretlen. A kijelzés az utolsó mérés időpontjára vonatkozik, nem vetítjük ki a fogyasztást mára.
+- Az éves keret augusztus 1. – július 31. között értendő. Évkezdő mérés nélkül a hiányzó kezdőszakaszt elegendő adat esetén a havi profilból becsüljük; ez a mért fogyasztástól külön jelenik meg. A keret kijelzése az utolsó mérés időpontjára vonatkozik, nem vetítjük ki a fogyasztást mára. Az éves becslés legalább az évkezdet óta követett mennyiség, és a felület jelzi, ha emiatt nagyobb a kézzel beállított értéknél.
 - A korrekció és fűtőérték az összes mérésre egységesen érvényes. Óracsere vagy átfordulás külön kezelése nincs beépítve.
 
 Az adatok a `rezsi-calculator.v1` localStorage-kulcsban maradnak, hálózaton nem továbbítjuk őket. Hibás korábbi adatot az alkalmazás nem ír felül. Több lapon történő módosításkor újratöltést kér a felülírás elkerülésére.
@@ -132,6 +132,8 @@ Referenciaadatok: `src/reference-data.ts`. Az MVM 2026. októberi [díjtájékoz
 A korábbi DOM-ot kézzel építő alkalmazásmodulokat eltávolítottuk. A Svelte-migráció előtti mentőcommit: `b381eb7` (`feat: add electricity calculator and TypeScript build`). A fordítás `svelte-check` ellenőrzést is futtat.
 
 ## Áram és több mérő
+
+Részéves jogosultságnál a fogyasztás, költség, megtakarítás és fajlagos értékek időszaki jelölést kapnak, konkrét dátumtartománnyal. Ezeket nem hasonlítjuk közvetlenül teljes éves országos referenciához. Az éves közös összehasonlítás csak minden mérő teljes éves jogosultsága esetén jelenik meg. A PDF-kimutatások ugyanígy különböztetik meg az éves és időszaki adatokat.
 
 Az áramoldalon legfeljebb 20 önálló mérési pont vehető fel, saját névvel, elosztóval, tarifával, díjakkal, jogosultsággal, mérési naplóval és helyben mentett piszkozattal. Az A1, A2, B alap, elérhető B Komfort, H, meglévő B GEO és D tarifák szerepelnek. A két A2-regiszter együtt kap egy keretet; a külön pontok kedvezménye nem ruházható át egymásra. A mérőpont törlése visszavonható.
 

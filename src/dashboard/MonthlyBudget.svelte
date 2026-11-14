@@ -89,7 +89,7 @@
     <ExpenseMetrics
       items={[
         {
-          label: "Ismert kiadás",
+          label: "Rögzített és becsült tételek",
           value: known.length ? money(spent) : "Nincs adat",
         },
         { label: "Ütemezett díjak", value: money(planned) },
@@ -107,18 +107,23 @@
     {#if known.length}
       <p>
         {#if spent > budget}
-          Az ismert kiadás {money(spent - budget)} összeggel túllépi a keretet.
+          A figyelembe vett tételek {money(spent - budget)} összeggel túllépik a keretet.
         {:else if spent === budget}
-          Az ismert kiadás elérte a keretet.
+          A figyelembe vett tételek elérték a keretet.
         {:else}
-          Az ismert kiadások után {money(budget - spent)} marad a keretből.
+          A keret és a figyelembe vett tételek különbözete {money(
+            budget - spent,
+          )}, a külön mutatott ütemezett díjak figyelembevétele előtt.
         {/if}
       </p>
     {/if}
     {#if planned > 0}
       <p class="field-hint">
         A csíkos sáv külön mutatja a havidíjakat és a hónap végéig esedékes
-        autós díjakat. Az ütemezés a befizetés állapotától független.
+        autós díjakat. Az ütemezés a befizetés állapotától független. A
+        havidíjak a fenti különbözetből még nincsenek levonva. Az autós díjak
+        között már naplózott kifizetés is lehet, ezért a két sáv nem adható
+        össze automatikusan.
       </p>
     {/if}
   {/if}

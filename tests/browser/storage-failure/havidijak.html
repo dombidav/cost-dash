@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Sikertelen havidíjmentés – teszt</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // All subscription writes fail; existing browser data remains untouched.
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "rezsipont.subscriptions.v1")
+          throw new DOMException("Test quota failure", "QuotaExceededError");
+        return original.call(this, key, value);
+      };
+      await import("/src/main.ts");
+    </script>
+  </body>
+</html>

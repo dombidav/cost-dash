@@ -235,10 +235,12 @@
         ? `Mentsd el a méréseidet PDF-ben, hogy később is visszaállíthasd őket. Az oldal a legutóbbi ${READING_LIMIT} mérést őrzi meg.`
         : "Mentsd el az adatokat és beállításokat PDF-ben, hogy később visszaállíthasd őket.")}
   </p>
-  <p class="photo-backup-note">
-    A csatolt képek is bekerülnek a PDF-be, és visszaállításkor újra megjelennek
-    a naplóban.
-  </p>
+  {#if category !== "subscriptions"}
+    <p class="photo-backup-note">
+      A csatolt képeket a PDF külön fájlcsatolmányként őrzi meg; a kimutatás
+      oldalain nem jelennek meg. Visszaállításkor ismét elérhetők a naplóban.
+    </p>
+  {/if}
   <div class="actions">
     <button type="button" aria-disabled={busy} onclick={() => download(false)}
       >{meterCategory ? "Fogyasztási napló (PDF)" : logLabel}</button

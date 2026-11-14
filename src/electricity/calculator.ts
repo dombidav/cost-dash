@@ -600,6 +600,7 @@ export function annual(p: ElectricityPoint, year: number) {
     ...period,
     activeStart: start,
     activeEnd: end,
+    fullPeriod: start === period.start && end === period.end,
     active,
     items,
     first,
@@ -614,6 +615,8 @@ export function annual(p: ElectricityPoint, year: number) {
     measuredFull,
     volume,
     kind,
+    manualAdjusted:
+      kind === "manual" && volume !== null && volume > manual * activeShare,
     projected,
     annualCost,
     usedNormal,

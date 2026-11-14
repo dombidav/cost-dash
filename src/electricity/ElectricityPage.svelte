@@ -92,7 +92,9 @@
   );
   let combinedAnnualVolume = $derived(
     annualRows.length > 1 &&
-      annualRows.every((row) => row.annual.volume !== null)
+      annualRows.every(
+        (row) => row.annual.volume !== null && row.annual.fullPeriod,
+      )
       ? annualRows.reduce((sum, row) => sum + (row.annual.volume ?? 0), 0)
       : null,
   );
@@ -258,8 +260,12 @@
     const p = createPoint(model.points.length + 1);
     model.points.push(p);
     model.selected = p.id;
-    save();
-    toast("Új önálló mérési pont hozzáadva. Állítsd be a tarifáját.");
+    const saved = save();
+    toast(
+      saved
+        ? "Új önálló mérési pont hozzáadva. Állítsd be a tarifáját."
+        : "Az új mérési pont csak ebben a munkamenetben érhető el. A helyi mentés sikertelen.",
+    );
   }
   function removePoint() {
     if (model.points.length === 1) {
@@ -270,15 +276,21 @@
       index = model.points.findIndex((p) => p.id === removed.id);
     model.points = model.points.filter((p) => p.id !== removed.id);
     model.selected = model.points[0].id;
-    save();
+    const saved = save();
     toast(
-      "Mérési pont eltávolítva.",
+      saved
+        ? "Mérési pont eltávolítva."
+        : "A mérési pont csak ebben a munkamenetben lett eltávolítva. A helyi mentés sikertelen.",
       () => {
         if (model.points.some((p) => p.id === removed.id)) return;
         model.points.splice(index, 0, removed);
         model.selected = removed.id;
-        save();
-        toast("Mérési pont visszaállítva.");
+        const restored = save();
+        toast(
+          restored
+            ? "Mérési pont visszaállítva."
+            : "A mérési pont csak ebben a munkamenetben állt vissza. A helyi mentés sikertelen.",
+        );
       },
       "electricity-point-select",
     );
@@ -369,9 +381,11 @@
     const pId = point.id,
       row = { ...point.readings.find((r) => r.id === id)! };
     point.readings = point.readings.filter((r) => r.id !== id);
-    save();
+    const saved = save();
     toast(
-      "Mérés törölve.",
+      saved
+        ? "Mérés törölve."
+        : "A mérés csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         const p = model.points.find((p) => p.id === pId);
         if (!p) {
@@ -386,10 +400,12 @@
         p.readings.push(row);
         model.selected = p.id;
         model.year = yearFor(row.date);
-        save();
+        const restored = save();
         toast(
           p.readings.some((item) => item.id === row.id)
-            ? "Mérés visszaállítva."
+            ? restored
+              ? "Mérés visszaállítva."
+              : "A mérés csak ebben a munkamenetben állt vissza. A helyi mentés sikertelen."
             : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
         );
       },
@@ -610,9 +626,16 @@
             >{fmt(yearly.measuredVolume)}
             <small>kWh</small></strong
           >
+          {#if yearly.first && yearly.last}<p class="field-hint">
+              {yearly.first.date} → {yearly.last.date}
+            </p>{/if}
         </div>
         <div>
-          <span>Normál éves keret</span><strong
+          <span
+            >{yearly.fullPeriod
+              ? "Normál éves keret"
+              : "Keret a jogosult időszakra"}</span
+          ><strong
             >{point.tariff === "B_GEO" ? "∞" : fmt(yearly.quota.cap)}
             <small>kWh</small></strong
           >
@@ -626,9 +649,13 @@
         {:else}
           <div>
             <span
-              >{yearly.measuredFull
-                ? "Mért éves fogyasztás"
-                : "Becsült éves fogyasztás"}</span
+              >{yearly.fullPeriod
+                ? yearly.measuredFull
+                  ? "Mért éves fogyasztás"
+                  : "Becsült éves fogyasztás"
+                : yearly.measuredFull
+                  ? "Mért időszaki fogyasztás"
+                  : "Becsült időszaki fogyasztás"}</span
             ><strong>{fmt(yearly.volume)} <small>kWh</small></strong>
           </div>
         {/if}
@@ -998,7 +1025,11 @@
         >
       </div>
       <div>
-        <span>Összes éves költségbecslés</span><strong
+        <span
+          >{annualRows.every((row) => row.annual.fullPeriod)
+            ? "Összes éves költségbecslés"
+            : "Költségbecslés a jogosultsági időszakokra"}</span
+        ><strong
           >{completeAnnual
             ? money(
                 allRows.reduce((n, r) => n + r.annual.annualCost!.total!, 0),

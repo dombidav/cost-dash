@@ -47,11 +47,11 @@
     <ExpenseMetrics
       items={[
         {
-          label: "Havonta fizetett díjak átlaga",
+          label: "Havonta esedékes díjak átlaga",
           value: money(regularAverage),
         },
         {
-          label: "Ritkábban fizetett díjak havi része",
+          label: "Ritkábban esedékes díjak havi része",
           value: money(occasionalAverage),
         },
         {

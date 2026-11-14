@@ -28,9 +28,17 @@ export function gasReport(data: AppState, detailed: boolean): Report {
   const stats = calculateStatistics(data, annual, bill);
   report.period = `${annual.start} – ${annual.end}`;
   meter.statistics = {
-    note: annual.opening
-      ? "Az évkezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
-      : undefined,
+    note:
+      [
+        annual.opening
+          ? "Az évkezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
+          : "",
+        stats.manualAdjusted
+          ? "A beállított éves becslésnél nagyobb, már követett fogyasztást alsó korlátként használjuk."
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ") || undefined,
     rows: [
       ["Éves kedvezményes keret", quantity(annual.annual, "m³")],
       [

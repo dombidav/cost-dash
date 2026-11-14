@@ -210,9 +210,11 @@
   function remove(id: string) {
     const row = { ...model.readings.find((r) => r.id === id)! };
     model.readings = model.readings.filter((r) => r.id !== id);
-    save();
+    const saved = save();
     toast(
-      "Mérés törölve.",
+      saved
+        ? "Mérés törölve."
+        : "A mérés csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         const error = validateReading(row, model.readings);
         if (error) {
@@ -221,10 +223,12 @@
         }
         model.readings.push(row);
         model.year = yearFor(row.date);
-        save();
+        const restored = save();
         toast(
           model.readings.some((item) => item.id === row.id)
-            ? "Mérés visszaállítva."
+            ? restored
+              ? "Mérés visszaállítva."
+              : "A mérés csak ebben a munkamenetben állt vissza. A helyi mentés sikertelen."
             : "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
         );
       },
@@ -348,6 +352,9 @@
         <span>Mért fogyasztás</span><strong
           >{fmt(annual.measured)} <small>m³</small></strong
         >
+        {#if annual.first && annual.last}<p class="field-hint">
+            {annual.first.date} → {annual.last.date}
+          </p>{/if}
       </div>
       <div>
         <span>Teljes éves keret</span><strong

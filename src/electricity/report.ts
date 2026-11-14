@@ -50,11 +50,22 @@ export function electricityReport(
     const unlimited = tariff === "B_GEO" && year.active > 0;
     const qualifier = tariff === "H" ? " (fűtési idényen kívül)" : "";
     report.meters[index].statistics = {
-      note: year.opening
-        ? "A kezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
-        : year.seasonSplitEstimated
-          ? "Az idényhatárt átfogó mért fogyasztást naparányosan osztottuk meg."
-          : undefined,
+      note:
+        [
+          !year.fullPeriod && year.active > 0
+            ? `Jogosultsági időszak: ${year.activeStart} – ${addDays(year.activeEnd, -1)} (${year.active} nap). A fogyasztás és a költség erre az időszakra vonatkozik.`
+            : "",
+          year.opening
+            ? "A kezdő mérés hiányzik. A hiányzó fogyasztást havi súlyozással becsültük."
+            : year.seasonSplitEstimated
+              ? "Az idényhatárt átfogó mért fogyasztást naparányosan osztottuk meg."
+              : "",
+          year.manualAdjusted
+            ? "A beállított becslésnél nagyobb, már követett fogyasztást alsó korlátként használjuk."
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined,
       rows: [
         [
           `Kedvezményes keret${qualifier}`,
@@ -81,12 +92,19 @@ export function electricityReport(
           quantity(year.latest?.average, "kWh/nap", 2),
         ],
         [
-          year.measuredFull
-            ? "Mért éves fogyasztás"
-            : "Becsült éves fogyasztás",
+          year.fullPeriod
+            ? year.measuredFull
+              ? "Mért éves fogyasztás"
+              : "Becsült éves fogyasztás"
+            : year.measuredFull
+              ? "Mért időszaki fogyasztás"
+              : "Becsült időszaki fogyasztás",
           quantity(year.volume, "kWh"),
         ],
-        ["Becsült éves költség", quantity(year.annualCost?.total, "Ft", 0)],
+        [
+          year.fullPeriod ? "Becsült éves költség" : "Becsült időszaki költség",
+          quantity(year.annualCost?.total, "Ft", 0),
+        ],
       ],
     };
   });
@@ -100,12 +118,19 @@ export function electricityReport(
     report.summary = {
       rows: [
         [
-          years.every((year) => year.measuredFull)
-            ? "Összes mért éves fogyasztás"
-            : "Összes becsült éves fogyasztás",
+          years.every((year) => year.fullPeriod)
+            ? years.every((year) => year.measuredFull)
+              ? "Összes mért éves fogyasztás"
+              : "Összes becsült éves fogyasztás"
+            : "Összes fogyasztás a jogosultsági időszakokban",
           quantity(volume, "kWh"),
         ],
-        ["Összes becsült éves költség", quantity(cost, "Ft", 0)],
+        [
+          years.every((year) => year.fullPeriod)
+            ? "Összes becsült éves költség"
+            : "Összes becsült költség a jogosultsági időszakokra",
+          quantity(cost, "Ft", 0),
+        ],
       ],
     };
   }

@@ -86,21 +86,37 @@
         "Adj meg nevet, pozitív havidíjat és érvényes első hónapot. Az utolsó hónap nem lehet korábbi az elsőnél.";
       return;
     }
-    rows = [...rows.filter((row) => row.id !== editing), item];
-    disk.save(rows);
+    const next = [...rows.filter((row) => row.id !== editing), item];
+    if (!disk.save(next)) {
+      error =
+        "A havidíjat nem sikerült elmenteni. A megadott mezők megmaradtak; a korábbi napló nem változott.";
+      return;
+    }
+    rows = next;
     reset();
     toast("A havidíjat elmentetted.");
   }
 
   function remove(item: Subscription) {
+    const next = rows.filter((row) => row.id !== item.id);
+    if (!disk.save(next)) {
+      toast(
+        "A havidíjat nem sikerült törölni a helyi mentésből. A korábbi tétel megmaradt.",
+      );
+      return;
+    }
     if (editing === item.id) reset();
-    rows = rows.filter((row) => row.id !== item.id);
-    disk.save(rows);
+    rows = next;
     toast(
       "A havidíjat minden hónapból törölted.",
       () => {
-        rows = [...rows, item];
-        disk.save(rows);
+        if (rows.some((row) => row.id === item.id)) return;
+        const restored = [...rows, item];
+        if (!disk.save(restored)) {
+          toast("A havidíjat nem sikerült visszaállítani a helyi mentésbe.");
+          return;
+        }
+        rows = restored;
       },
       "subscriptions-log",
     );
@@ -174,7 +190,7 @@
         />
         <EntryInput
           id="subscription-start"
-          label="Első fizetett hónap"
+          label="Első elszámolási hónap"
           type="month"
           bind:value={start}
           required
@@ -186,7 +202,7 @@
         />
         <EntryInput
           id="subscription-end"
-          label="Utolsó fizetett hónap"
+          label="Utolsó elszámolási hónap"
           type="month"
           bind:value={end}
           min={start || undefined}
@@ -198,8 +214,9 @@
         />
       </div>
       {#if editing}<p class="field-hint">
-          A módosítás a tétel teljes időszakára érvényes. Díjemelésnél zárd le a
-          régi tételt, majd vedd fel külön az új árat.
+          A módosítás a tétel teljes időszakára érvényes. A befizetés állapotát
+          nem tartjuk nyilván. Díjemelésnél zárd le a régi tételt, majd vedd fel
+          külön az új árat.
         </p>{/if}
       {#if error}<p class="field-error" role="alert">{error}</p>{/if}
       <div class="expense-actions">

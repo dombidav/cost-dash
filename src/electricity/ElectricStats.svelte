@@ -2,11 +2,15 @@
   import Help from "../components/Help.svelte";
   import type { ElectricityState, ElectricityPoint } from "./types";
   import { type annual, cost, measured, heating } from "./calculator";
-  import { parseNumber } from "../calendar";
+  import { addDays, parseNumber } from "../calendar";
   import { percentChange } from "../lib/consumption";
   import { fmt, money, signed } from "../lib/format";
   import { regionLabel, regionOptions } from "../lib/regions";
-  import { NATIONAL_MONTHLY, ELECTRICITY_REGIONS } from "./reference";
+  import {
+    NATIONAL_MONTHLY,
+    ELECTRICITY_REGIONS,
+    DEFAULT_ANNUAL_ESTIMATE,
+  } from "./reference";
   import Field from "../components/Field.svelte";
   import Select from "../components/Select.svelte";
   import Chart from "../components/Chart.svelte";
@@ -68,7 +72,7 @@
     region === "country" ? null : ELECTRICITY_REGIONS[region] * 12,
   );
   let bars = $derived([
-    ...(yearly.volume !== null
+    ...(yearly.fullPeriod && yearly.volume !== null
       ? [
           {
             label: "Aktív mérő éves adata",
@@ -146,7 +150,7 @@
     missing: "KEVÉS ADAT",
     measured: "TELJES MÉRT IDŐSZAK",
     seasonal: "SZEZONÁLIS BECSLÉS",
-    manual: "MEGADOTT ÉVES BECSLÉS",
+    manual: "BEÁLLÍTOTT ÉVES BECSLÉS",
   };
   function update(key: keyof ElectricityState["stats"], raw: string) {
     const value = ["people", "floorArea", "region"].includes(key)
@@ -238,7 +242,11 @@
     </article>
     <article class="card stat-card forecast-card">
       <div class="stat-top">
-        <h3>Várható éves fogyasztás</h3>
+        <h3>
+          {yearly.fullPeriod
+            ? "Várható éves fogyasztás"
+            : "Fogyasztás a jogosultsági időszakban"}
+        </h3>
         <span class="stat-symbol" aria-hidden="true">⌁</span>
       </div>
       <span class="badge neutral">{basis[yearly.kind]}</span>
@@ -247,7 +255,7 @@
       </div>
       <p class="stat-description">
         {yearly.kind === "measured"
-          ? "A jogosult éves időszak pontos nyitó és záró állásából."
+          ? "A jogosultsági időszak pontos nyitó és záró állásából."
           : yearly.kind === "seasonal"
             ? yearly.last?.date === yearly.activeEnd
               ? "A mért fogyasztás és a havi súlyozással becsült évkezdő rész együtt."
@@ -263,9 +271,29 @@
           A fűtési idényre a beállított fogyasztási aránnyal számolunk.
         {/if}
       </p>
+      {#if !yearly.fullPeriod && yearly.active > 0}
+        <p class="stat-footnote">
+          {yearly.activeStart} – {addDays(yearly.activeEnd, -1)} · {yearly.active}
+          nap.
+        </p>
+      {/if}
+      {#if yearly.kind === "manual" && yearly.manualAdjusted}
+        <p class="stat-footnote">
+          Az időszakra jutó beállított becslés kisebb az eddig követett
+          fogyasztásnál. Ezért legalább az évkezdet óta számolt mennyiséget
+          mutatjuk, a becsült kezdő résszel együtt, ha van ilyen.
+        </p>
+      {/if}
+      {#if yearly.kind === "manual" && parseNumber(point.annualEstimate) === DEFAULT_ANNUAL_ESTIMATE}
+        <p class="stat-footnote">
+          Az alkalmazás kiinduló éves becslése {fmt(DEFAULT_ANNUAL_ESTIMATE, 0)} kWh,
+          országos referencia alapján. Ellenőrizd, hogy ez megfelel-e a saját fogyasztásodnak.
+        </p>
+      {/if}
       <p class="stat-footnote">
-        Becsült éves költség: {money(yearly.annualCost?.total)}, alapdíjjal,
-        egyedi időszaki jóváírás nélkül.
+        Becsült {yearly.fullPeriod ? "éves" : "időszaki"} költség: {money(
+          yearly.annualCost?.total,
+        )}, alapdíjjal, egyedi időszaki jóváírás nélkül.
       </p>
     </article>
     {#if point.tariff !== "B_GEO"}<article class="card stat-card">
@@ -312,13 +340,19 @@
     </article>
     <article class="card stat-card benchmark-card">
       <div class="stat-top">
-        <h3>Magyar átlaghoz képest</h3>
+        <h3>
+          {yearly.fullPeriod
+            ? "Magyar átlaghoz képest"
+            : "Éves országos referencia"}
+        </h3>
         <span class="badge neutral">KSH · 2025</span>
       </div>
       <p class="stat-description">
-        {yearly.volume === null
-          ? "Éves mérés vagy jelölt becslés kell a saját összevetéshez."
-          : `Aktív mérő: ${fmt(yearly.volume)} kWh · ${basis[yearly.kind].toLocaleLowerCase("hu")}.`}
+        {!yearly.fullPeriod
+          ? "A jogosultsági időszak nem teljes kedvezményes év, ezért az időszaki fogyasztást nem hasonlítjuk az éves országos átlaghoz."
+          : yearly.volume === null
+            ? "Éves mérés vagy jelölt becslés kell a saját összevetéshez."
+            : `Aktív mérő: ${fmt(yearly.volume)} kWh · ${basis[yearly.kind].toLocaleLowerCase("hu")}.`}
         Országos referencia: {fmt(NATIONAL_MONTHLY * 12)} kWh/év.
       </p>
       <div class="benchmark-filter">
@@ -338,11 +372,13 @@
         label="Éves áramfogyasztás összehasonlítása"
       />
       <p class="stat-change">
-        {yearly.volume !== null
+        {yearly.fullPeriod && yearly.volume !== null
           ? `${signed(percentChange(yearly.volume, NATIONAL_MONTHLY * 12))} az országos átlaghoz képest.`
           : ""}
       </p>
-      {#if yearly.volume !== null && regional !== null}<p class="stat-footnote">
+      {#if yearly.fullPeriod && yearly.volume !== null && regional !== null}<p
+          class="stat-footnote"
+        >
           {regionLabel(region)} átlagához képest: {signed(
             percentChange(yearly.volume, regional),
           )}.
@@ -383,13 +419,15 @@
         onblur={() => update("saving", String(saving))}
       />
       <div class="stat-number">
-        <span>{fmt(savings, 0)}</span><small>Ft/év</small>
+        <span>{fmt(savings, 0)}</span><small
+          >{yearly.fullPeriod ? "Ft/év" : "Ft/időszak"}</small
+        >
       </div>
       <p class="stat-description">
         {yearly.annualCost?.total !== null &&
         yearly.annualCost?.total !== undefined
-          ? `${money(yearly.annualCost.total)} → ${money(reduced?.total)} becsült éves költség.`
-          : "Éves fogyasztási adat és modellezhető tarifa szükséges."}
+          ? `${money(yearly.annualCost.total)} → ${money(reduced?.total)} becsült ${yearly.fullPeriod ? "éves" : "időszaki"} költség.`
+          : "Fogyasztási adat és modellezhető tarifa szükséges."}
       </p>
       <p class="stat-footnote">
         Újraszámoljuk az ársávokat{point.tariff === "H"
@@ -437,11 +475,12 @@
           >{yearly.volume !== null && settings.people
             ? fmt(yearly.volume / parseNumber(settings.people))
             : "—"}</span
-        ><small>kWh/fő/év</small>
+        ><small>{yearly.fullPeriod ? "kWh/fő/év" : "kWh/fő/időszak"}</small>
       </div>
       <p class="stat-description">
         {#if yearly.volume !== null && settings.floorArea}
-          {fmt(yearly.volume / parseNumber(settings.floorArea))} kWh/m²/év.
+          {fmt(yearly.volume / parseNumber(settings.floorArea))}
+          {yearly.fullPeriod ? "kWh/m²/év" : "kWh/m²/időszak"}.
         {/if}
         {#if !settings.floorArea || !settings.people}
           {#if !settings.floorArea && !settings.people}
@@ -459,7 +498,9 @@
         {/if}
       </p>
       <p class="stat-footnote">
-        Az aktív mérő éves mért vagy becsült energiájából számoljuk.
+        Az aktív mérő {yearly.fullPeriod
+          ? "éves"
+          : "jogosultsági időszakra jutó"} mért vagy becsült energiájából számoljuk.
       </p>
     </article>
     {#if point.billing.schedule === "prepaid"}<article class="card stat-card">

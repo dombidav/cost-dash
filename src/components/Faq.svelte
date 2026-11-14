@@ -113,12 +113,12 @@
       {
         question: "Mi történik, ha megszűnik egy előfizetés?",
         answer:
-          "Szerkeszd a tételt, és add meg az utolsó fizetett hónapot. A korábbi hónapokban továbbra is szerepelni fog.",
+          "Szerkeszd a tételt, és add meg az utolsó elszámolási hónapot. A korábbi hónapokban továbbra is szerepelni fog.",
       },
       {
         question: "Hogyan rögzítsem a díjemelést?",
         answer:
-          "Zárd le a régi tételt a régi áron fizetett utolsó hónappal, majd vedd fel az új árat a következő hónaptól.",
+          "Zárd le a régi tételt a régi díj utolsó elszámolási hónapjával, majd vedd fel az új árat a következő hónaptól.",
       },
     ],
     car: [

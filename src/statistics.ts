@@ -255,6 +255,10 @@ export function calculateStatistics(
     canForecast,
     annualVolume,
     annualKind,
+    manualAdjusted:
+      annualKind === "manual" &&
+      annualVolume !== null &&
+      annualVolume > parseNumber(billing.annualEstimate),
     remainingDays,
     headroom,
     priorStart,

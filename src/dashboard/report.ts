@@ -24,11 +24,11 @@ export function dashboardReport(
     title: "Háztartási kiadások",
     period:
       monthIndex === "year"
-        ? `${year}. év${year === Number(today().slice(0, 4)) ? " eddig" : ""}`
+        ? `${year}. év${year === Number(today().slice(0, 4)) ? " az aktuális hónappal" : ""}`
         : (selected[0]?.month ?? String(year)),
     periodLabel: "Kimutatás időszaka",
-    summaryTitle: "Ismert kiadások összesítése",
-    note: "A PDF csatolmánya a teljes app minden tárolt adatát tartalmazza, a kiválasztott kimutatási időszaktól függetlenül. A közműdíjak becslések; a hiányzó adatok nem nullás kiadások.",
+    summaryTitle: "Rögzített és becsült költségek összesítése",
+    note: "A PDF csatolmánya a teljes app minden tárolt adatát tartalmazza, a kiválasztott kimutatási időszaktól függetlenül. A közműdíjak becslések, a havidíjak ütemezett összegek; a hiányzó adatok nem nullás kiadások. Az aktuális hónap teljes havi becslést is tartalmazhat.",
     summary: {
       rows: [
         ...summary.costs.map((item): [string, string] => [

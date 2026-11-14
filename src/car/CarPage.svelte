@@ -118,8 +118,12 @@
       charge,
     ];
     if (taxInput) car.taxInput = { ...taxInput };
-    disk.save(data);
-    toast(`${chargeNames[charge.kind]} ütemezése mentve.`);
+    const saved = disk.save(data);
+    toast(
+      saved
+        ? `${chargeNames[charge.kind]} ütemezése mentve.`
+        : "Az ütemezés csak ebben a munkamenetben érvényes. A helyi mentés sikertelen.",
+    );
   }
 
   function saveTax(input: TaxInput, amount: number) {
@@ -134,13 +138,18 @@
     owner.charges = (owner.charges ?? []).filter(
       (item) => item.kind !== charge.kind,
     );
-    disk.save(data);
+    const saved = disk.save(data);
     toast(
-      `${chargeNames[charge.kind]} ütemezése törölve.`,
+      saved
+        ? `${chargeNames[charge.kind]} ütemezése törölve.`
+        : "Az ütemezés csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         if (owner.charges?.some((item) => item.kind === charge.kind)) return;
         owner.charges = [...(owner.charges ?? []), charge];
-        disk.save(data);
+        if (!disk.save(data))
+          toast(
+            "Az ütemezés visszaállítása csak ebben a munkamenetben érvényes. A helyi mentés sikertelen.",
+          );
       },
       "car-recurring",
     );
@@ -310,9 +319,11 @@
     const owner = car;
     const index = owner.entries.findIndex((row) => row.id === item.id);
     owner.entries = owner.entries.filter((row) => row.id !== item.id);
-    disk.save(data);
+    const saved = disk.save(data);
     toast(
-      "A tételt törölted.",
+      saved
+        ? "A tételt törölted."
+        : "A tétel csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         const target = data.cars.find((entry) => entry.id === owner.id);
         if (!target || target.entries.some((entry) => entry.id === item.id))
@@ -322,7 +333,10 @@
           item,
           ...target.entries.slice(index),
         ];
-        disk.save(data);
+        if (!disk.save(data))
+          toast(
+            "A tétel visszaállítása csak ebben a munkamenetben érvényes. A helyi mentés sikertelen.",
+          );
       },
       "car-log",
     );

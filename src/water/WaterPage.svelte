@@ -62,7 +62,8 @@
       item,
     ];
     removedReadings += trimReadings([data.readings]);
-    disk.save(data);
+    if (!disk.save(data))
+      return "A módosítás csak ebben a munkamenetben érvényes. A helyi mentés sikertelen.";
   }
 
   async function record(event: SubmitEvent) {
@@ -123,9 +124,11 @@
     const item = data.readings.find((row) => row.id === id);
     if (!item) return;
     data.readings = data.readings.filter((row) => row.id !== id);
-    disk.save(data);
+    const saved = disk.save(data);
     toast(
-      "A vízóraállást törölted.",
+      saved
+        ? "A vízóraállást törölted."
+        : "A vízóraállás csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         const message = writeReading(item);
         if (message) toast(message);
@@ -138,12 +141,17 @@
     const item = data.months.find((row) => row.month === month);
     if (!item) return;
     data.months = data.months.filter((row) => row.month !== month);
-    disk.save(data);
+    const saved = disk.save(data);
     toast(
-      "A korábbi havi tételt törölted.",
+      saved
+        ? "A korábbi havi tételt törölted."
+        : "A korábbi havi tétel csak ebben a munkamenetben törlődött. A helyi mentés sikertelen.",
       () => {
         data.months = [...data.months, item];
-        disk.save(data);
+        if (!disk.save(data))
+          toast(
+            "A havi tétel visszaállítása csak ebben a munkamenetben érvényes. A helyi mentés sikertelen.",
+          );
       },
       "water-reading",
     );

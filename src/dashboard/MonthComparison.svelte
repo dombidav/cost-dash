@@ -54,8 +54,14 @@
 <section class="card" aria-labelledby="dashboard-comparison">
   <h2 id="dashboard-comparison">Mi változott a kiadásokban?</h2>
   <p class="expense-subtitle">
-    Nézd meg, melyik kategória húzta fel vagy le a havi összeget.
+    Nézd meg a rögzített és becsült havi összegek eltérését kategóriánként.
   </p>
+  {#if row.month === now.slice(0, 7) || referenceMonth === now.slice(0, 7)}
+    <p class="field-hint">
+      Az aktuális hónap még folyamatban van: az eddig rögzített kifizetések
+      teljes havi becslésekkel és ütemezett díjakkal együtt szerepelhetnek.
+    </p>
+  {/if}
   <div class="field comparison-field">
     <div class="field-label">
       <label for="dashboard-comparison-period">Viszonyítási időszak</label>
@@ -116,7 +122,8 @@
     </ul>
     <p class="field-hint">
       Az összegben az a {changes.length} kategória szerepel, amelyikhez mindkét hónapban
-      van használható, teljes adat.
+      van rögzített vagy becsülhető összeg. Ez nem igazolja, hogy minden kifizetést
+      rögzítettél. A részlegesen lefedett közműadatokat kihagyjuk.
     </p>
   {:else}
     <p class="empty-state">

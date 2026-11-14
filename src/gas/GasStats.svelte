@@ -161,11 +161,11 @@
       </p>
       <dl class="cost-breakdown">
         <div>
-          <dt>Kedvezményes fogyasztás</dt>
+          <dt>Kedvezményes energiadíj</dt>
           <dd>{money(result.billingCost?.low)}</dd>
         </div>
         <div>
-          <dt>Keret feletti fogyasztás</dt>
+          <dt>Keret feletti energiadíj</dt>
           <dd>{money(result.billingCost?.high)}</dd>
         </div>
         <div>
@@ -282,7 +282,9 @@
               ? "Az évben mért fogyasztás és a havi súlyozással becsült évkezdő rész együtt."
               : "A mért szakasz fogyasztását a havi profil alapján vetítjük ki az egész évre."
             : result.annualKind === "manual"
-              ? "Kevés a mérés, ezért a kézzel megadott éves becslést mutatjuk."
+              ? result.manualAdjusted
+                ? `A beállított éves becslés (${fmt(parseNumber(model.billing.annualEstimate))} m³) kisebb az évkezdet óta számolt fogyasztásnál. Ezért legalább az eddig követett mennyiséget mutatjuk, a becsült évkezdő résszel együtt, ha van ilyen.`
+                : "Kevés a mérés, ezért a beállított éves becslést mutatjuk."
               : "Legalább 30 nap és az éves profilsúly 5%-ának megfigyelése kell."}
         {#if result.annualKind === "missing"}
           Addig megadhatsz <a href="#gas-annual-estimate">kézi éves becslést</a

@@ -66,10 +66,12 @@
       null,
     ),
   );
-  let yearLabel = $derived(year === currentYear ? "Év eddig" : "Teljes év");
+  let yearLabel = $derived(
+    year === currentYear ? "Év az aktuális hónappal" : "Teljes év",
+  );
   let period = $derived(
     monthIndex === "year"
-      ? `${year}. év${year === currentYear ? " eddig" : ""}`
+      ? `${year}. év${year === currentYear ? " az aktuális hónappal" : ""}`
       : monthLabel(selected[0]?.month ?? currentMonth),
   );
   let canvas = $state<HTMLCanvasElement>();
@@ -114,8 +116,8 @@
     <span class="eyebrow">DASHBOARD · KIADÁSOK EGY HELYEN</span>
     <h1>Kiadási áttekintő</h1>
     <p>
-      Nézd meg, mire ment el a legtöbb, és hogyan változtak a kiadásaid hónapról
-      hónapra.
+      Nézd át a rögzített kifizetéseket, a becsült közműdíjakat és az ütemezett
+      havidíjakat, hónapokra bontva.
     </p>
   </div>
   {#if sources.errors.length}
@@ -129,7 +131,8 @@
     <h2 id="dashboard-summary">Havi és éves összesítés</h2>
     <p class="expense-subtitle">
       Válassz egy hónapot vagy az egész évet. A folyó év az aktuális hónapig
-      látható.
+      látható. Az aktuális hónap teljes havi becsléseket és ütemezett díjakat is
+      tartalmazhat.
     </p>
     <div class="expense-fields">
       <div class="field">
@@ -183,7 +186,7 @@
     <ExpenseMetrics
       items={[
         {
-          label: `Ismert összegek · ${period}`,
+          label: `Rögzített és becsült összegek · ${period}`,
           value: summary.total === null ? "Nincs adat" : money(summary.total),
         },
         ...(monthIndex === "year"
@@ -214,7 +217,7 @@
   </section>
 
   <section class="card" aria-labelledby="dashboard-categories">
-    <h2 id="dashboard-categories">Mire ment el? · {period}</h2>
+    <h2 id="dashboard-categories">Költségek kategóriánként · {period}</h2>
     <p class="expense-subtitle">
       Nyisd meg a kategóriát a tételek és a beállítások megtekintéséhez.
     </p>
