@@ -2,6 +2,8 @@
   import { tick } from "svelte";
   import Field from "./Field.svelte";
   import Chart from "./Chart.svelte";
+  import ReadingPhoto from "./ReadingPhoto.svelte";
+  import type { Photo } from "../lib/photos";
   import { A2_PEAK_HELP } from "../lib/field-help";
   import { fmt } from "../lib/format";
   import { days, sortByDate } from "../calendar";
@@ -16,11 +18,13 @@
     onedit,
     onremove,
     onopening,
+    onphoto,
   }: {
     id: string;
     readingId: string;
     rows: {
       id: string;
+      photoId?: string;
       date: string;
       values: (number | null)[];
       total: number | null;
@@ -36,6 +40,7 @@
     ) => string | void;
     onremove: (id: string) => void;
     onopening?: () => void;
+    onphoto?: (id: string, photo: Photo | null) => Promise<void>;
   } = $props();
 
   const previewSize = 3;
@@ -189,6 +194,11 @@
                 >
               </td>
               <td role="cell" class="row-actions">
+                {#if onphoto}<ReadingPhoto
+                    photoId={row.photoId}
+                    label={`${row.date} mérés képe`}
+                    oncommit={(photo) => onphoto!(row.id, photo)}
+                  />{/if}
                 <button
                   class="delete-button"
                   type="button"

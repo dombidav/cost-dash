@@ -27,12 +27,17 @@
   import Select from "../components/Select.svelte";
   import Gauge from "../components/Gauge.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
+  import ReadingPhoto from "../components/ReadingPhoto.svelte";
+  import { commitPhoto, type Photo } from "../lib/photos";
   import GasStats from "./GasStats.svelte";
   const disk = storage(GAS_STORAGE_KEY, initialGas, validGas, migrateGas);
   const initialRemoved = limitReadings(disk.data);
   if (initialRemoved) disk.save(disk.data);
   let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
+  let draftPhoto = $state<Photo | null>(null);
+  let photoError = $state("");
+  let saving = $state(false);
   let draft = $state({ ...disk.data.draft }),
     formError = $state<ReturnType<typeof readingError>>();
   let meterInput = $state<HTMLInputElement>();
@@ -141,8 +146,9 @@
     model.billing = candidate;
     save();
   }
-  function add(event: SubmitEvent) {
+  async function add(event: SubmitEvent) {
     event.preventDefault();
+    if (saving) return;
     const reading = {
       id: uid(),
       date: draft.date,
@@ -150,18 +156,44 @@
     };
     formError = readingError(reading, model.readings);
     if (formError) return;
-    model.readings.push(reading);
-    model.year = yearFor(reading.date);
-    draft = { value: "", date: today() };
-    model.draft = { ...draft };
-    const saved = save();
-    toast(
-      !model.readings.some((row) => row.id === reading.id)
-        ? "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba."
-        : saved
-          ? "Mérőállás rögzítve és elmentve."
-          : "Mérőállás rögzítve, de a helyi mentés sikertelen.",
-    );
+    saving = true;
+    photoError = "";
+    try {
+      await commitPhoto(draftPhoto, (photoId) => {
+        const next = $state.snapshot(model);
+        next.readings.push({ ...reading, ...(photoId ? { photoId } : {}) });
+        next.year = yearFor(reading.date);
+        const removed = limitReadings(next);
+        if (!next.readings.some((row) => row.id === reading.id))
+          throw new Error(
+            "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+          );
+        next.draft = { value: "", date: today() };
+        if (!disk.save(next)) return false;
+        removedReadings += removed;
+        model = next;
+        return true;
+      });
+      draft = { ...model.draft };
+      draftPhoto = null;
+      toast("Mérőállás rögzítve és elmentve.");
+    } catch (reason) {
+      photoError = (reason as Error).message;
+    } finally {
+      saving = false;
+    }
+  }
+  async function setPhoto(id: string, photo: Photo | null) {
+    await commitPhoto(photo, (photoId) => {
+      const next = $state.snapshot(model);
+      const row = next.readings.find((item) => item.id === id);
+      if (!row) throw new Error("A mérés már nem található.");
+      if (photoId) row.photoId = photoId;
+      else delete row.photoId;
+      if (!disk.save(next)) return false;
+      model = next;
+      return true;
+    });
   }
   function edit(id: string, field: number | "date", value: string) {
     const row = model.readings.find((r) => r.id === id)!;
@@ -407,7 +439,9 @@
           >
         {/if}
       </p>
-      <button class="primary-button" type="submit"
+      <ReadingPhoto bind:value={draftPhoto} />
+      {#if photoError}<p class="field-error" role="alert">{photoError}</p>{/if}
+      <button class="primary-button" type="submit" disabled={saving}
         ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
         ></button
       >
@@ -582,6 +616,7 @@
     {removedReadings}
     rows={annual.items.map((r) => ({
       id: r.id,
+      photoId: r.photoId,
       date: r.date,
       values: [r.value],
       total: r.value,
@@ -589,6 +624,7 @@
     columns={["Mérőállás"]}
     onedit={edit}
     onremove={remove}
+    onphoto={setPhoto}
     onopening={opening}
   />
 {/key}

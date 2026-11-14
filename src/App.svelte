@@ -2,6 +2,7 @@
   import { tick, untrack } from "svelte";
   import Header from "./components/Header.svelte";
   import Faq from "./components/Faq.svelte";
+  import PhotoSupportDialog from "./components/PhotoSupportDialog.svelte";
   import { ui } from "./lib/ui.svelte";
   import { currentPage, pages as navigation } from "./lib/pages";
   const id = currentPage(location.pathname);
@@ -119,6 +120,9 @@
 
 <a class="skip-link" href="#main">Ugrás a tartalomhoz</a>
 <Header {id} />
+{#if ["gas", "electricity", "water", "car"].includes(id)}
+  <PhotoSupportDialog />
+{/if}
 <main id="main" class="shell" tabindex="-1">
   {#await page}
     <div class="empty-state" role="status">A kalkulátor betöltése…</div>

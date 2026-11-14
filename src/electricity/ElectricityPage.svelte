@@ -41,6 +41,8 @@
   import Gauge from "../components/Gauge.svelte";
   import Chart from "../components/Chart.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
+  import ReadingPhoto from "../components/ReadingPhoto.svelte";
+  import { commitPhoto, type Photo } from "../lib/photos";
   import ElectricStats from "./ElectricStats.svelte";
   import PdfActions from "../components/PdfActions.svelte";
   import { electricityReport } from "./report";
@@ -54,6 +56,9 @@
   if (initialRemoved) disk.save(disk.data);
   let removedReadings = $state(initialRemoved);
   let model = $state(disk.data);
+  let draftPhoto = $state<Photo | null>(null);
+  let photoError = $state("");
+  let saving = $state(false);
   let point = $derived(model.points.find((p) => p.id === model.selected)!);
   let hasMultiplePoints = $derived(model.points.length > 1);
   let configuredTariffs = $derived(new Set(model.points.map((p) => p.tariff)));
@@ -75,6 +80,7 @@
   let readingInput = $state<HTMLInputElement>();
   $effect(() => {
     const selectedPoint = point;
+    draftPhoto = null;
     draft = untrack(() => ({ ...selectedPoint.draft }));
     formError = undefined;
   });
@@ -285,8 +291,9 @@
     };
     save();
   }
-  function addReading(event: SubmitEvent) {
+  async function addReading(event: SubmitEvent) {
     event.preventDefault();
+    if (saving) return;
     const row = {
       id: uid(),
       date: draft.date,
@@ -295,18 +302,52 @@
     };
     formError = readingError(point, row);
     if (formError) return;
-    point.readings.push(row);
-    model.year = yearFor(row.date);
-    point.draft = { date: today(), peak: "", off: "" };
-    draft = { ...point.draft };
-    const saved = save();
-    toast(
-      !point.readings.some((item) => item.id === row.id)
-        ? "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba."
-        : saved
-          ? "Villanyóraállás rögzítve és elmentve."
-          : "Mérés rögzítve, de a helyi mentés sikertelen.",
-    );
+    const owner = point.id;
+    saving = true;
+    photoError = "";
+    try {
+      await commitPhoto(draftPhoto, (photoId) => {
+        const next = $state.snapshot(model);
+        const target = next.points.find((item) => item.id === owner);
+        if (!target) throw new Error("A mérési pont már nem található.");
+        target.readings.push({ ...row, ...(photoId ? { photoId } : {}) });
+        next.year = yearFor(row.date);
+        const removed = limitReadings(next);
+        if (!target.readings.some((item) => item.id === row.id))
+          throw new Error(
+            "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+          );
+        target.draft = { date: today(), peak: "", off: "" };
+        if (!disk.save(next)) return false;
+        removedReadings += removed;
+        model = next;
+        return true;
+      });
+      if (point.id === owner) {
+        draft = { ...point.draft };
+        draftPhoto = null;
+      }
+      toast("Villanyóraállás rögzítve és elmentve.");
+    } catch (reason) {
+      photoError = (reason as Error).message;
+    } finally {
+      saving = false;
+    }
+  }
+  async function setPhoto(id: string, photo: Photo | null) {
+    const owner = point.id;
+    await commitPhoto(photo, (photoId) => {
+      const next = $state.snapshot(model);
+      const row = next.points
+        .find((item) => item.id === owner)
+        ?.readings.find((item) => item.id === id);
+      if (!row) throw new Error("A mérés már nem található.");
+      if (photoId) row.photoId = photoId;
+      else delete row.photoId;
+      if (!disk.save(next)) return false;
+      model = next;
+      return true;
+    });
   }
   function editReading(id: string, field: number | "date", raw: string) {
     const current = point.readings.find((r) => r.id === id)!;
@@ -705,7 +746,11 @@
             >
           {/if}
         </p>
-        <button class="primary-button" type="submit"
+        <ReadingPhoto bind:value={draftPhoto} />
+        {#if photoError}<p class="field-error" role="alert">
+            {photoError}
+          </p>{/if}
+        <button class="primary-button" type="submit" disabled={saving}
           ><span>Mérőállás rögzítése</span><span aria-hidden="true">↗</span
           ></button
         >
@@ -1039,6 +1084,7 @@
     {removedReadings}
     rows={yearly.items.map((r) => ({
       id: r.id,
+      photoId: r.photoId,
       date: r.date,
       values: point.tariff === "A2" ? [r.peak, r.off] : [r.peak],
       total: total(point, r),
@@ -1048,6 +1094,7 @@
       : ["Mérőállás"]}
     onedit={editReading}
     onremove={removeReading}
+    onphoto={setPhoto}
     onopening={opening}
   />
 {/key}

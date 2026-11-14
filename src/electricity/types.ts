@@ -4,6 +4,7 @@ export type Area = "demasz" | "eon" | "elmu" | "emasz";
 export type Schedule = "flat" | "actual" | "prepaid";
 export interface ElectricityReading {
   id: string;
+  photoId?: string;
   date: string;
   peak: number;
   off: number | null;

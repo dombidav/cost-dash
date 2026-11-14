@@ -1,4 +1,6 @@
 import { ui } from "./ui.svelte";
+import { photoIds } from "./photos";
+import { schedulePhotoCleanup } from "./photo-cleanup";
 export function storage<T>(
   key: string,
   initial: () => T,
@@ -13,6 +15,7 @@ export function storage<T>(
     if (raw !== null) {
       const saved: unknown = JSON.parse(raw);
       const parsed = migrate ? migrate(saved) : saved;
+      photoIds(parsed);
       if (!validate(parsed)) throw new Error("invalid local data");
       data = parsed;
     }
@@ -39,7 +42,9 @@ export function storage<T>(
     save(value: T) {
       if (locked) return false;
       try {
+        photoIds(value);
         localStorage.setItem(key, JSON.stringify(value));
+        schedulePhotoCleanup(() => ui.undo !== null);
         ui.status = "Minden módosítás mentve";
         ui.storageError = false;
         return true;

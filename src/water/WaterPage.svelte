@@ -4,6 +4,9 @@
   import ExpenseMetrics from "../components/ExpenseMetrics.svelte";
   import PageIntro from "../components/PageIntro.svelte";
   import ReadingLog from "../components/ReadingLog.svelte";
+  import ReadingPhoto from "../components/ReadingPhoto.svelte";
+  import { commitPhoto, type Photo } from "../lib/photos";
+  import { trimReadings } from "../lib/reading-limit";
   import PdfActions from "../components/PdfActions.svelte";
   import { waterReport } from "./report";
   import { readingError } from "../calculator";
@@ -27,6 +30,8 @@
 
   const disk = storage(WATER_KEY, initialWater, validWater, migrateWater);
   let data = $state(disk.data);
+  let draftPhoto = $state<Photo | null>(null);
+  let saving = $state(false);
   const now = today();
   let date = $state(now);
   let value = $state("");
@@ -56,13 +61,47 @@
     disk.save(data);
   }
 
-  function record(event: SubmitEvent) {
+  async function record(event: SubmitEvent) {
     event.preventDefault();
-    error = writeReading({ id: uid(), date, value: parseNumber(value) }) ?? "";
+    if (saving) return;
+    const item = { id: uid(), date, value: parseNumber(value) };
+    error = readingError(item, data.readings, now)?.message ?? "";
     if (error) return;
-    date = now;
-    value = "";
-    toast("A vízóraállás bekerült a naplóba.");
+    saving = true;
+    try {
+      await commitPhoto(draftPhoto, (photoId) => {
+        const next = $state.snapshot(data);
+        next.readings.push({ ...item, ...(photoId ? { photoId } : {}) });
+        trimReadings([next.readings]);
+        if (!next.readings.some((row) => row.id === item.id))
+          throw new Error(
+            "Ez a mérés túl régi ahhoz, hogy beférjen a naplóba.",
+          );
+        if (!disk.save(next)) return false;
+        data = next;
+        return true;
+      });
+      date = now;
+      value = "";
+      draftPhoto = null;
+      toast("A vízóraállás bekerült a naplóba.");
+    } catch (reason) {
+      error = (reason as Error).message;
+    } finally {
+      saving = false;
+    }
+  }
+  async function setPhoto(id: string, photo: Photo | null) {
+    await commitPhoto(photo, (photoId) => {
+      const next = $state.snapshot(data);
+      const row = next.readings.find((item) => item.id === id);
+      if (!row) throw new Error("A mérés már nem található.");
+      if (photoId) row.photoId = photoId;
+      else delete row.photoId;
+      if (!disk.save(next)) return false;
+      data = next;
+      return true;
+    });
   }
 
   function edit(id: string, field: number | "date", input: string) {
@@ -160,8 +199,11 @@
         />
       </div>
       {#if error}<p class="field-error" role="alert">{error}</p>{/if}
+      <ReadingPhoto bind:value={draftPhoto} />
       <div class="expense-actions">
-        <button class="primary-button" type="submit">Mérőállás mentése</button>
+        <button class="primary-button" type="submit" disabled={saving}
+          >Mérőállás mentése</button
+        >
       </div>
     </form>
   </section>
@@ -205,6 +247,7 @@
     columns={["Vízóraállás"]}
     onedit={edit}
     onremove={remove}
+    onphoto={setPhoto}
   />
 
   {#if archive.length}

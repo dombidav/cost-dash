@@ -6,6 +6,8 @@
   import Help from "../components/Help.svelte";
   import PageIntro from "../components/PageIntro.svelte";
   import PdfActions from "../components/PdfActions.svelte";
+  import ReadingPhoto from "../components/ReadingPhoto.svelte";
+  import { commitPhoto, type Photo } from "../lib/photos";
   import { carReport } from "./report";
   import { parseNumber, today, validDate } from "../calendar";
   import { fmt, money, uid } from "../lib/format";
@@ -33,6 +35,9 @@
 
   const disk = storage(CAR_KEY, initialCar, validCar, migrateCar);
   let data = $state(disk.data);
+  let draftPhoto = $state<Photo | null>(null);
+  let draftPhotoId = $state<string>();
+  let saving = $state(false);
   let car = $derived(data.cars.find((item) => item.id === data.selected)!);
   const now = today();
   let kind = $state<CarEntry["kind"]>("fuel");
@@ -80,6 +85,8 @@
   );
 
   function reset() {
+    draftPhoto = null;
+    draftPhotoId = undefined;
     date = now;
     paid = km = odometer = liters = unitPrice = name = editing = error = "";
     changed = null;
@@ -168,6 +175,7 @@
 
   async function edit(item: CarEntry) {
     reset();
+    draftPhotoId = item.photoId;
     editing = item.id;
     date = item.date;
     paid = String(item.paid);
@@ -185,8 +193,9 @@
     document.getElementById("car-paid")?.focus();
   }
 
-  function save(event: SubmitEvent) {
+  async function save(event: SubmitEvent) {
     event.preventDefault();
+    if (saving) return;
     const common = {
       id: editing || uid(),
       date,
@@ -246,12 +255,54 @@
           : "Ellenőrizd a dátumot, a pozitív összeget és a többi megadott mezőt.";
       return;
     }
-    car.entries = editing
-      ? car.entries.map((row) => (row.id === editing ? item : row))
-      : [...car.entries, item];
-    disk.save(data);
-    reset();
-    toast("Az autóköltség bekerült a naplóba.");
+    const owner = car.id;
+    const existingPhotoId = draftPhotoId;
+    const editedId = editing;
+    saving = true;
+    try {
+      await commitPhoto(draftPhoto, (newPhotoId) => {
+        const next = $state.snapshot(data);
+        const target = next.cars.find((entry) => entry.id === owner);
+        if (
+          !target ||
+          (editedId && !target.entries.some((row) => row.id === editedId))
+        )
+          throw new Error("Az autó vagy a kiadás már nem található.");
+        const photoId = newPhotoId ?? existingPhotoId;
+        const entry = { ...item, ...(photoId ? { photoId } : {}) };
+        target.entries = editedId
+          ? target.entries.map((row) => (row.id === editedId ? entry : row))
+          : [...target.entries, entry];
+        if (!disk.save(next)) return false;
+        data = next;
+        return true;
+      });
+      reset();
+      toast("Az autóköltség bekerült a naplóba.");
+    } catch (reason) {
+      error = (reason as Error).message;
+    } finally {
+      saving = false;
+    }
+  }
+  async function setPhoto(id: string, photo: Photo | null) {
+    const owner = car.id;
+    await commitPhoto(photo, (photoId) => {
+      const next = $state.snapshot(data);
+      const row = next.cars
+        .find((entry) => entry.id === owner)
+        ?.entries.find((entry) => entry.id === id);
+      if (!row) throw new Error("A kiadás már nem található.");
+      if (photoId) row.photoId = photoId;
+      else delete row.photoId;
+      if (!disk.save(next)) return false;
+      data = next;
+      if (editing === id) {
+        draftPhotoId = photoId;
+        draftPhoto = null;
+      }
+      return true;
+    });
   }
 
   function remove(item: CarEntry) {
@@ -482,8 +533,17 @@
         </p>
       {/if}
       {#if error}<p class="field-error" role="alert">{error}</p>{/if}
+      <ReadingPhoto
+        value={draftPhoto}
+        photoId={draftPhotoId}
+        label="Blokk vagy számla képe"
+        oncommit={async (photo) => {
+          draftPhoto = photo;
+          draftPhotoId = undefined;
+        }}
+      />
       <div class="expense-actions">
-        <button class="primary-button" type="submit"
+        <button class="primary-button" type="submit" disabled={saving}
           >{editing ? "Módosítás mentése" : "Kiadás mentése"}</button
         >
         {#if editing}<button class="text-button" type="button" onclick={reset}
@@ -609,6 +669,11 @@
               </p>
             </div>
             <div class="expense-row-actions">
+              <ReadingPhoto
+                photoId={item.photoId}
+                label={`${item.date} bizonylata`}
+                oncommit={(photo) => setPhoto(item.id, photo)}
+              />
               <button
                 class="text-button"
                 type="button"

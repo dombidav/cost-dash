@@ -4,6 +4,7 @@ export interface Settings {
 }
 export interface Reading {
   id: string;
+  photoId?: string;
   date: string;
   value: number;
 }

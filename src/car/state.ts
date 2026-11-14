@@ -13,6 +13,7 @@ export type Fuel = {
 };
 export type CarEntry = {
   id: string;
+  photoId?: string;
   date: string;
   paid: number;
   odometer?: number;
