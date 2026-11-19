@@ -1,4 +1,5 @@
 import {
+  ArcElement,
   BarController,
   BarElement,
   CategoryScale,
@@ -7,14 +8,21 @@ import {
   LineElement,
   LinearScale,
   PointElement,
+  PieController,
   Tooltip,
   type ChartDatasetCustomTypesPerDataset,
 } from "chart.js";
 import { fmt } from "../lib/format";
 import { categories } from "../lib/pages";
-import { categoryColorProperty, categoryIds, type MonthReport } from "./data";
+import {
+  categoryColorProperty,
+  categoryIds,
+  type MonthReport,
+  type summarize,
+} from "./data";
 
 Chart.register(
+  ArcElement,
   BarController,
   BarElement,
   CategoryScale,
@@ -22,6 +30,7 @@ Chart.register(
   LineElement,
   LinearScale,
   PointElement,
+  PieController,
   Tooltip,
 );
 const shortMonth = new Intl.DateTimeFormat("hu-HU", {
@@ -32,6 +41,49 @@ const amount = new Intl.NumberFormat("hu-HU", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
+
+export function drawCategoryChart(
+  canvas: HTMLCanvasElement,
+  costs: ReturnType<typeof summarize>["costs"],
+) {
+  const styles = getComputedStyle(canvas);
+  const positive = costs.filter((item) => (item.value ?? 0) > 0);
+  const values = positive.map((item) => item.value!);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const chart = new Chart(canvas, {
+    type: "pie",
+    data: {
+      labels: positive.map((item) => categories[item.id].label),
+      datasets: [
+        {
+          data: values,
+          backgroundColor: positive.map((item) =>
+            styles.getPropertyValue(categoryColorProperty(item.id)).trim(),
+          ),
+          borderColor: styles.getPropertyValue("--card").trim() || "#19201d",
+          borderWidth: 2,
+          hoverOffset: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: 8 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) =>
+              `${item.label}: ${fmt(item.parsed, 0, 0)} Ft (${fmt((item.parsed / total) * 100, 1)}%)`,
+          },
+        },
+      },
+    },
+  });
+  return () => chart.destroy();
+}
 
 export function drawMonthlyChart(
   canvas: HTMLCanvasElement,

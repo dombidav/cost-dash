@@ -75,6 +75,8 @@
       : monthLabel(selected[0]?.month ?? currentMonth),
   );
   let canvas = $state<HTMLCanvasElement>();
+  let categoryCanvas = $state<HTMLCanvasElement>();
+  let categoryChartFailed = $state(false);
   let chartFailed = $state(false);
   let restoreVersion = $state(0);
 
@@ -85,6 +87,28 @@
       monthIndex = currentIndex;
     }
   }
+
+  $effect(() => {
+    if (!categoryCanvas) return;
+    const target = categoryCanvas;
+    const costs = summary.costs;
+    let stopped = false;
+    let dispose: (() => void) | undefined;
+    void import("./chart")
+      .then(({ drawCategoryChart }) => {
+        if (!stopped) {
+          dispose = drawCategoryChart(target, costs);
+          categoryChartFailed = false;
+        }
+      })
+      .catch(() => {
+        if (!stopped) categoryChartFailed = true;
+      });
+    return () => {
+      stopped = true;
+      dispose?.();
+    };
+  });
 
   $effect(() => {
     if (!canvas) return;
@@ -219,45 +243,66 @@
   <section class="card" aria-labelledby="dashboard-categories">
     <h2 id="dashboard-categories">Költségek kategóriánként · {period}</h2>
     <p class="expense-subtitle">
-      Nyisd meg a kategóriát a tételek és a beállítások megtekintéséhez.
+      A kördiagram a pozitív összegek arányát mutatja. Nyisd meg a kategóriát a
+      tételek és a beállítások megtekintéséhez.
     </p>
-    <ul class="expense-list category-list">
-      {#each summary.costs as item (item.id)}
-        {@const info = categories[item.id]}
-        {@const estimated = item.id !== "car" && item.id !== "subscriptions"}
-        <li style:--category-color={`var(${categoryColorProperty(item.id)})`}>
-          <div class="category-row">
-            <a href={info.href}
-              ><span aria-hidden="true">{info.icon}</span> {info.label}</a
-            >
-            <strong
-              >{item.value === null ? "Nincs adat" : money(item.value)}</strong
-            >
+    <div class="category-breakdown" class:has-chart={positiveTotal > 0}>
+      {#if positiveTotal > 0}
+        <div>
+          {#if categoryChartFailed}<p class="field-hint">
+              A kördiagram nem tölthető be. Az összegek a kategóriáknál
+              elérhetők.
+            </p>{/if}
+          <div
+            class="category-chart"
+            role="img"
+            aria-label={`Költségek kategóriánként · ${period}. A pozitív összegek megoszlása; a részletes adatok a kategórialistában olvashatók.`}
+          >
+            <canvas bind:this={categoryCanvas} aria-hidden="true"></canvas>
           </div>
-          {#if item.value !== null}
-            <p>
-              {estimated
-                ? "Becsült díj"
-                : item.id === "car"
-                  ? "Rögzített kifizetés"
-                  : "Ütemezett havidíj"}{item.partial
-                ? item.id === "water"
-                  ? " · Részleges havi lefedettség"
-                  : " · Hiányos mérőadat"
-                : ""}{selected.length > 1
-                ? ` · ${item.known}/${selected.length} hónap`
-                : ""}
-            </p>
-            {#if item.value > 0 && positiveTotal > 0}
-              <div class="category-track" aria-hidden="true">
-                <span style:width={`${(item.value / positiveTotal) * 100}%`}
-                ></span>
-              </div>
+        </div>
+      {:else}
+        <p class="empty-state">
+          Nincs megjeleníthető pozitív költség ebben az időszakban.
+        </p>
+      {/if}
+      <ul class="expense-list category-list">
+        {#each summary.costs as item (item.id)}
+          {@const info = categories[item.id]}
+          {@const estimated = item.id !== "car" && item.id !== "subscriptions"}
+          <li style:--category-color={`var(${categoryColorProperty(item.id)})`}>
+            <div class="category-row">
+              <a href={info.href}
+                ><span class="category-swatch" aria-hidden="true"></span><span
+                  aria-hidden="true">{info.icon}</span
+                >
+                {info.label}</a
+              >
+              <strong
+                >{item.value === null
+                  ? "Nincs adat"
+                  : money(item.value)}</strong
+              >
+            </div>
+            {#if item.value !== null}
+              <p>
+                {estimated
+                  ? "Becsült díj"
+                  : item.id === "car"
+                    ? "Rögzített kifizetés"
+                    : "Ütemezett havidíj"}{item.partial
+                  ? item.id === "water"
+                    ? " · Részleges havi lefedettség"
+                    : " · Hiányos mérőadat"
+                  : ""}{selected.length > 1
+                  ? ` · ${item.known}/${selected.length} hónap`
+                  : ""}
+              </p>
             {/if}
-          {/if}
-        </li>
-      {/each}
-    </ul>
+          </li>
+        {/each}
+      </ul>
+    </div>
     <p class="field-hint">
       Az üres hónapokhoz nincs adat. A víz, a gáz és az áram összege a jelenlegi
       beállításokkal készült becslés. Az autó értékvesztése külön marad.
@@ -422,6 +467,27 @@
 </div>
 
 <style>
+  .category-breakdown {
+    display: grid;
+    align-items: center;
+    gap: 16px 28px;
+  }
+  .category-chart {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
+    aspect-ratio: 1;
+    margin-inline: auto;
+  }
+  @media (min-width: 700px) {
+    .category-breakdown.has-chart {
+      grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+    }
+  }
+  .category-list {
+    min-width: 0;
+    margin: 0;
+  }
   .category-list li {
     display: block;
   }
@@ -440,17 +506,12 @@
     color: var(--category-color);
     font-weight: 650;
   }
-  .category-track {
-    background: var(--bg);
-    height: 6px;
-    margin-top: 8px;
-    border-radius: 10px;
-  }
-  .category-track span {
-    display: block;
+  .category-swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
     background: var(--category-color);
-    height: 100%;
-    border-radius: inherit;
+    border-radius: 3px;
   }
   .trend-chart {
     position: relative;
