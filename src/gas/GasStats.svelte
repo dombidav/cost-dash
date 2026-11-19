@@ -245,7 +245,7 @@
     </article>
     <article class="card stat-card">
       <div class="stat-top">
-        <h3>Mennyi fér még bele?</h3>
+        <h3>Maradék napi átlaga az utolsó méréskor</h3>
         <span class="stat-symbol" aria-hidden="true">◷</span>
       </div>
       <div class="stat-number">
@@ -260,6 +260,7 @@
       </p>
       <p class="stat-footnote">
         Az éves maradék egyszerű napi átlaga, nem a havi szezonális kedvezmény.
+        A mai, szezonális fogyasztási célt az oldal tetején találod.
         {#if result.annual.opening}Az évkezdetkor hiányzó fogyasztást havi
           súlyozással becsültük.{/if}
         Az utolsó mérés óta eltelt fogyasztást nem becsüljük hozzá.

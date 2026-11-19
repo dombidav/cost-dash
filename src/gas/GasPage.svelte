@@ -30,6 +30,7 @@
   import ReadingPhoto from "../components/ReadingPhoto.svelte";
   import { commitPhoto, type Photo } from "../lib/photos";
   import GasStats from "./GasStats.svelte";
+  import GasDailyBudget from "./GasDailyBudget.svelte";
   const disk = storage(GAS_STORAGE_KEY, initialGas, validGas, migrateGas);
   const initialRemoved = limitReadings(disk.data);
   if (initialRemoved) disk.save(disk.data);
@@ -308,6 +309,7 @@
     <a href="#gas-comparison">Mi a különbség a módok között? ↓</a>
   </div>
 </section>
+<GasDailyBudget {model} {annual} />
 <div class="overview-grid">
   <section class="card balance-card">
     <div class="card-heading">
@@ -372,6 +374,9 @@
           <span>Éves napi keretátlag</span><strong
             >{fmt(annual.daily, 2)} <small>m³</small></strong
           >
+          <p class="field-hint">
+            Egyszerű éves átlag; a mai szezonális cél fent látható.
+          </p>
         </div>
       {/if}
     </div>
@@ -549,15 +554,15 @@
   <button class="text-button" type="button" onclick={useReadings}
     >Utolsó két mérés időszakának használata ↗</button
   >
-  <details class="profile-settings">
+  <details class="profile-settings" id="gas-profile-settings">
     <summary
       >Fogyasztási profilsúlyok szerkesztése <span aria-hidden="true">＋</span
       ></summary
     >
     <p class="field-hint">
       A súlyok megadják, az éves fogyasztás mekkora része jut egy hónapra. Az
-      évkezdet becsléséhez is ezeket használjuk. Ha vannak saját havi
-      fogyasztási adataid, megadhatod az arányukat.
+      évkezdet és a mai szezonális cél becsléséhez is ezeket használjuk. Ha
+      vannak saját havi fogyasztási adataid, megadhatod az arányukat.
     </p>
     <div class="profile-inputs">
       {#each months as month, index (month)}<Field
@@ -684,8 +689,9 @@
       <h3>Energiából köbméter</h3>
       <p>
         Éves keret: 63 645 MJ, augusztus 1-től a következő augusztus 1-jéig.
-        Köbméter = MJ ÷ (fűtőérték × korrekció). A napi keret az év tényleges
-        365/366 napjával készül.
+        Köbméter = MJ ÷ (fűtőérték × korrekció). Az éves napi keretátlag az év
+        tényleges 365/366 napjával készül. A mai szezonális cél a megmaradt
+        keretet a hátralévő napok fogyasztási profilsúlyaival osztja el.
       </p>
     </div>
     <div>
