@@ -743,11 +743,9 @@
           {#if point.tariff === "A2"}A csúcs- és a völgyidős állás is szükséges.{/if}
         </p>
         <div class="field-label">
-          <label for="electricity-reading-date"
-            >Rögzítés dátuma · ÉÉÉÉ-HH-NN</label
-          ><Help
+          <label for="electricity-reading-date">Rögzítés dátuma</label><Help
             forId="electricity-reading-date"
-            label="Rögzítés dátuma · ÉÉÉÉ-HH-NN"
+            label="Rögzítés dátuma"
           />
         </div>
         <input
@@ -755,10 +753,12 @@
           aria-required="true"
           aria-invalid={formError?.field === "date"}
           aria-describedby={`electricity-reading-date-help${formError?.field === "date" ? " electricity-reading-error" : ""}`}
-          type="text"
-          maxlength="10"
+          type="date"
+          min="1900-01-01"
+          max={today()}
           bind:value={draft.date}
           onblur={saveDraft}
+          onchange={saveDraft}
           oninput={() => (formError = undefined)}
         />
         <p class="field-error" id="electricity-reading-error" role="alert">
@@ -822,11 +822,13 @@
         }}
       /><Field
         id="electricity-start"
+        type="date"
         label="Időszak kezdete"
         value={point.billing.start}
         oncommit={(v) => commit("start", v)}
       /><Field
         id="electricity-end"
+        type="date"
         label="Záró dátum · már nem része"
         value={point.billing.end}
         oncommit={(v) => commit("end", v)}
@@ -991,11 +993,13 @@
     <div class="e-aggregate-dates">
       <Field
         id="electricity-all-start"
+        type="date"
         label="Közös időszak kezdete"
         value={model.aggregate.start}
         oncommit={(v) => aggregate("start", v)}
       /><Field
         id="electricity-all-end"
+        type="date"
         label="Közös záró dátum · kizáró"
         value={model.aggregate.end}
         oncommit={(v) => aggregate("end", v)}

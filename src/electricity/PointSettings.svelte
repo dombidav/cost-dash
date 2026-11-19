@@ -280,6 +280,7 @@
               />
               <Field
                 id="electricity-effective"
+                type="date"
                 label="Díjak érvényessége ettől"
                 value={point.rates.effective}
                 oncommit={(v) => oncommit("effective", v)}
@@ -336,11 +337,13 @@
             <div class="advanced-grid">
               <Field
                 id="electricity-eligible-from"
+                type="date"
                 label="Lakossági jogosultság kezdete"
                 value={point.eligibleFrom}
                 oncommit={(v) => oncommit("eligibleFrom", v)}
               /><Field
                 id="electricity-eligible-to"
+                type="date"
                 label="Jogosultság vége · kizáró, ha van"
                 value={point.eligibleTo}
                 placeholder="Nem kötelező"
@@ -415,11 +418,13 @@
                   oncommit={(v) => oncommit("extraAnnual", v)}
                 /><Field
                   id="electricity-extra-from"
+                  type="date"
                   label="Többletkeret érvényes ettől"
                   value={point.extraFrom}
                   oncommit={(v) => oncommit("extraFrom", v)}
                 /><Field
                   id="electricity-extra-to"
+                  type="date"
                   label="Többletkeret vége · kizáró, ha van"
                   value={point.extraTo}
                   placeholder="Nem kötelező"

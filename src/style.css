@@ -779,7 +779,8 @@ td input {
   padding: 8px;
   width: 142px;
 }
-td input[type="text"] {
+td input[type="text"],
+td input[type="date"] {
   width: 100%;
   max-width: 170px;
 }
@@ -1166,7 +1167,8 @@ footer {
     min-width: 0;
   }
   td input,
-  td input[type="text"] {
+  td input[type="text"],
+  td input[type="date"] {
     width: 100%;
     max-width: none;
     min-height: 44px;

@@ -423,9 +423,9 @@
       </div>
       <p class="field-hint">A mérőn látható teljes állás, nem a fogyasztás.</p>
       <div class="field-label">
-        <label for="gas-date">Rögzítés dátuma · ÉÉÉÉ-HH-NN</label><Help
+        <label for="gas-date">Rögzítés dátuma</label><Help
           forId="gas-date"
-          label="Rögzítés dátuma · ÉÉÉÉ-HH-NN"
+          label="Rögzítés dátuma"
         />
       </div>
       <input
@@ -433,10 +433,12 @@
         aria-required="true"
         aria-invalid={formError?.field === "date"}
         aria-describedby={`gas-date-help${formError?.field === "date" ? " gas-reading-error" : ""}`}
-        type="text"
+        type="date"
+        min="1900-01-01"
+        max={today()}
         bind:value={draft.date}
         onblur={saveDraft}
-        maxlength="10"
+        onchange={saveDraft}
         oninput={() => (formError = undefined)}
       />
       <p id="gas-reading-error" class="field-error" role="alert">
@@ -533,11 +535,13 @@
   <div class="billing-inputs">
     <Field
       id="gas-bill-start"
+      type="date"
       label="Időszak kezdete"
       value={model.billing.start}
       oncommit={(value) => billing("start", value)}
     /><Field
       id="gas-bill-end"
+      type="date"
       label="Záró dátum · már nem része"
       value={model.billing.end}
       oncommit={(value) => billing("end", value)}

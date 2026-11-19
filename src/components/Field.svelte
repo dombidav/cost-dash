@@ -5,6 +5,9 @@
     id,
     label,
     value,
+    type = "text",
+    min,
+    max,
     unit = "",
     placeholder = "",
     decimal = false,
@@ -15,6 +18,9 @@
     id: string;
     label: string;
     value: string | number | null;
+    type?: "text" | "date";
+    min?: string;
+    max?: string;
     unit?: string;
     placeholder?: string;
     decimal?: boolean;
@@ -39,12 +45,15 @@
     <div class="field-input" class:input-unit={!!unit}>
       <input
         {id}
-        type="text"
-        inputmode={decimal ? "decimal" : "text"}
+        {type}
+        {min}
+        {max}
+        inputmode={type === "text" ? (decimal ? "decimal" : "text") : undefined}
         bind:value={draft}
         {placeholder}
         autocomplete="off"
-        onblur={commit}
+        onblur={type === "date" ? undefined : commit}
+        onchange={type === "date" ? commit : undefined}
         aria-invalid={!!error}
         aria-describedby={`${unit ? `${id}-unit ` : ""}${id}-help${error ? ` ${id}-error` : ""}`}
       />{#if unit}<span id={`${id}-unit`}>{unit}</span>{/if}

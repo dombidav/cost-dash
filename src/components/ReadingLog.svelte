@@ -6,7 +6,7 @@
   import type { Photo } from "../lib/photos";
   import { A2_PEAK_HELP } from "../lib/field-help";
   import { fmt } from "../lib/format";
-  import { days, sortByDate } from "../calendar";
+  import { days, sortByDate, today } from "../calendar";
   let {
     id,
     readingId,
@@ -151,10 +151,13 @@
             {@const previous = ordered[pageEnd - rowIndex - 2]}
             <!-- svelte-ignore a11y_no_redundant_roles (Rows are grids on mobile.) -->
             <tr role="row">
-              <td role="cell">
+              <td role="cell" class="history-date">
                 <span class="history-cell-label" aria-hidden="true">Dátum</span>
                 <Field
                   id={`${id}-${row.id}-date`}
+                  type="date"
+                  min="1900-01-01"
+                  max={today()}
                   label={`${row.date} mérés dátuma`}
                   value={row.date}
                   hiddenLabel
@@ -266,6 +269,11 @@
 </section>
 
 <style>
+  @media (max-width: 599px) {
+    .history-date {
+      grid-column: 1 / -1;
+    }
+  }
   .history-pagination {
     display: flex;
     flex-wrap: wrap;

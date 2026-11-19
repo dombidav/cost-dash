@@ -75,7 +75,7 @@
     { key: "low", label: "Kedvezményes bruttó díj · Ft/MJ", decimal: true },
     { key: "high", label: "Keret feletti bruttó díj · Ft/MJ", decimal: true },
     { key: "annualBase", label: "Éves alapdíj · Ft", decimal: true },
-    { key: "effective", label: "Díjak érvényessége ettől · ÉÉÉÉ-HH-NN" },
+    { key: "effective", label: "Díjak érvényessége ettől" },
     {
       key: "area",
       label: "Fűtött alapterület · m² (nem kötelező)",
@@ -115,6 +115,7 @@
     <div class="stats-input-grid">
       {#each settings as field (field.key)}<Field
           id={`gas-stat-${field.key}`}
+          type={field.key === "effective" ? "date" : "text"}
           label={field.label}
           value={model.stats[field.key]}
           decimal={field.decimal}

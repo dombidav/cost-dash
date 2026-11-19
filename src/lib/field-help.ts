@@ -1,7 +1,7 @@
 export type FieldHelp = { what: string; where: string };
 const help = (what: string, where: string): FieldHelp => ({ what, where });
 const readingDate = help(
-  "Az a nap, amikor a mérőállást leolvastad, ÉÉÉÉ-HH-NN formátumban. Alapból a mai nap; korábbi mérés is rögzíthető.",
+  "Az a nap, amikor a mérőállást leolvastad. A naptárból is kiválaszthatod. Alapból a mai nap; korábbi mérés is rögzíthető.",
   "A saját leolvasásod dátumát add meg. Számláról átvett állásnál a mérési dátumot keresd, ne a számla keltét vagy a fizetési határidőt.",
 );
 const gasReading = help(
@@ -26,7 +26,7 @@ const year = help(
 );
 const start = help(
   "A számolt időszak első napja, amely már beleszámít a fogyasztás és a kedvezmény elosztásába.",
-  "A számlán az elszámolt időszak kezdete, vagy a saját kezdő leolvasásod napja. A formátum ÉÉÉÉ-HH-NN.",
+  "A számlán az elszámolt időszak kezdete, vagy a saját kezdő leolvasásod napja. A naptárból is kiválaszthatod.",
 );
 const end = help(
   "A záró dátum már nem része a számolt időszaknak. Például teljes novemberhez december 1-jét adj meg; a záró mérőállás erre a határnapra kell.",
@@ -77,7 +77,7 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
   ),
   "gas-stat-effective": help(
     "A megadott díjakhoz tartozó érvényességi dátum. Tájékoztató jelölés: a kalkulátor a megadott árakkal számol az egész vizsgált időszakra, nem vált automatikusan történeti díjakat.",
-    "A szolgáltatói díjtábla hatálybalépési dátumánál vagy a díjváltozásról szóló értesítésben, ÉÉÉÉ-HH-NN formátumban.",
+    "A szolgáltatói díjtábla hatálybalépési dátumánál vagy a díjváltozásról szóló értesítésben. A naptárból is kiválaszthatod.",
   ),
   "gas-stat-area": help(
     "A ténylegesen fűtött helyiségek összes alapterülete. Az éves m³/m² és kWh/m² összevetéshez kell; a gázköltséget nem befolyásolja.",
@@ -168,7 +168,7 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
   ),
   "electricity-effective": help(
     "A használt díjtábla érvényességének kezdete. Jelölésként tároljuk: nem indít automatikus díjváltást; minden számolt napra a megadott díjakat használjuk.",
-    "A hivatalos díjtábla hatálybalépési dátumánál vagy a szolgáltatói díjértesítőben, ÉÉÉÉ-HH-NN formátumban.",
+    "A hivatalos díjtábla hatálybalépési dátumánál vagy a szolgáltatói díjértesítőben. A naptárból is kiválaszthatod.",
   ),
   "electricity-off-percent": help(
     "A kézi éves A2-becslésből völgyidőre jutó százalék. A maradék a csúcsidőé. A 50% fele-fele megoszlást jelent.",
@@ -196,7 +196,7 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
   ),
   "electricity-extra-from": help(
     "Az első nap, amelytől a jóváhagyott többletkeretet figyelembe vehetjük. Csak a jogosult napokra arányosítjuk az éves mennyiséget.",
-    "A többletkedvezményről szóló szolgáltatói visszaigazolás érvényességi kezdeténél, ÉÉÉÉ-HH-NN formátumban.",
+    "A többletkedvezményről szóló szolgáltatói visszaigazolás érvényességi kezdeténél. A naptárból is kiválaszthatod.",
   ),
   "electricity-extra-to": help(
     "Az első nap, amelytől a többletkeret már nem érvényes. Határozatlan idejű kedvezménynél üres maradhat.",
