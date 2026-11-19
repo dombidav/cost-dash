@@ -56,6 +56,8 @@ Az `npm test` a képtárolás, a hibás mentések visszagörgetése és a képes
 
 ## GitHub Pages deployment
 
+Minden oldal láblécében látható a verzió: production buildnél a buildelt Git-commit rövid hash-e. A Vite build időben beilleszti az értéket, ezért a GitHub Pagesen és offline is működik, böngészős GitHub-lekérdezés nélkül. Minden új build az aktuális commitot használja; fejlesztői szerveren `local` jelenik meg. A production buildhez Git-checkout és elérhető `git` parancs szükséges, amit a Pages workflow Checkout lépése biztosít.
+
 A `.github/workflows/pages.yml` workflow a `master` ágra történő push esetén Node.js 24 alatt telepíti a rögzített függőségeket (`npm ci`), futtatja a lintet és a típusellenőrzést is tartalmazó buildet, majd a `dist/` tartalmát publikálja GitHub Pagesre. A `master` ágra nyitott pull requesteknél ugyanezek az ellenőrzések futnak. A deployment kézzel is indítható az Actions → GitHub Pages → Run workflow menüből, a `master` ágat kiválasztva.
 
 Egyszeri beállítás a [repo Pages-beállításaiban](https://github.com/dombidav/cost-dash/settings/pages): **Build and deployment → Source → GitHub Actions**. Ezután a következő `master` push vagy kézi workflow-indítás publikálja az appot. Külön token vagy repository secret nem szükséges; a workflow a beépített `GITHUB_TOKEN` és az OIDC használatával telepít. A build csak olvasási jogot kap, a Pages írási jogosultsága a deployment jobra korlátozódik.

@@ -1,10 +1,21 @@
 import { defineConfig } from "vite";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { offlineApp } from "./build/pwa.ts";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: "./",
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(
+      command === "build"
+        ? execFileSync("git", ["rev-parse", "--short=7", "HEAD"], {
+            cwd: fileURLToPath(new URL(".", import.meta.url)),
+            encoding: "utf8",
+          }).trim()
+        : "local",
+    ),
+  },
   plugins: [svelte(), offlineApp()],
   optimizeDeps: { include: ["cropperjs"] },
   build: {
@@ -30,4 +41,4 @@ export default defineConfig({
       format: { comments: false },
     },
   },
-});
+}));

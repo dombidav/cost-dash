@@ -141,6 +141,9 @@
   <a class="footer-brand" href={pageInfo.href}>RezsiPont</a><span
     >Rezsiszámlák egyszerűen. Pont.</span
   ><span>{pageInfo.title} · Tájékoztató becslés</span>
+  <span class="app-version"
+    >Verzió: <code>{import.meta.env.VITE_APP_VERSION}</code></span
+  >
 </footer>
 <div role="status" class="sr-only">{ui.message}</div>
 {#if ui.message || ui.undo}
@@ -172,6 +175,12 @@
 {/if}
 
 <style>
+  .app-version {
+    white-space: nowrap;
+  }
+  .app-version code {
+    font-size: inherit;
+  }
   .undo-actions {
     display: flex;
     flex-wrap: wrap;
