@@ -22,8 +22,26 @@ self.addEventListener("install", (event) => {
       }
     })(),
   );
-  // Do not skipWaiting: replacing a running version can break lazy imports or
-  // interrupt unsaved edits. Updates activate after all old windows are closed.
+  // The app requests activation after the complete download, outside editing.
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "ACTIVATE_UPDATE" || !event.source) return;
+  event.waitUntil(
+    (async () => {
+      const windows = (
+        await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        })
+      ).filter((client) => client.url.startsWith(self.registration.scope));
+      // Other tabs may still need their old lazy chunks or have unsaved edits.
+      // Keep their version until the requesting app is the only open window.
+      if (windows.length === 1 && windows[0].id === event.source.id)
+        await self.skipWaiting();
+      else event.source.postMessage({ type: "UPDATE_DEFERRED" });
+    })(),
+  );
 });
 
 self.addEventListener("activate", (event) => {

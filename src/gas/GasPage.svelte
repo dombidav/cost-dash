@@ -399,7 +399,7 @@
       <h2>Új mérőállás</h2>
       <span class="icon-circle" aria-hidden="true">＋</span>
     </div>
-    <form onsubmit={add}>
+    <form onsubmit={add} aria-busy={saving}>
       <div class="field-label">
         <label for="gas-reading">Gázóra állása · m³</label><Help
           forId="gas-reading"

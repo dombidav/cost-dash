@@ -227,7 +227,11 @@
   }
 </script>
 
-<section class="card pdf-actions" aria-label="PDF exportálás és visszaállítás">
+<section
+  class="card pdf-actions"
+  aria-label="PDF exportálás és visszaállítás"
+  aria-busy={busy}
+>
   <h2>PDF exportálás és visszaállítás</h2>
   <p>
     {description ??

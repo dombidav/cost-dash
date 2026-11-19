@@ -1,6 +1,6 @@
 <script lang="ts">
   import icon from "../../dashboard.svg";
-  import { installApp, pwa } from "../lib/pwa.svelte";
+  import { installApp, updateApp, pwa } from "../lib/pwa.svelte";
 </script>
 
 {#if pwa.supported && !pwa.installed}
@@ -43,10 +43,19 @@
   </section>
 {/if}
 {#if pwa.supported && pwa.updateAvailable}
-  <p class="update-notice" role="status">
-    Új verzió érhető el. A frissítéshez zárd be a RezsiPont összes lapját és
-    ablakát, majd nyisd meg újra az alkalmazást. A mentett adataid megmaradnak.
-  </p>
+  <div class="update-notice">
+    <p role="status">
+      {#if pwa.updating}Az új verzió megnyitása…
+      {:else if pwa.updateBlocked}Az új verzió letöltve. Zárd be a többi
+        RezsiPont-lapot vagy -ablakot a frissítéshez.
+      {:else}Az új verzió letöltve. Ha még nem szerkesztettél, automatikusan
+        frissül. Egyébként mentsd el a módosításaidat, majd frissíts.{/if}
+      A mentett adataid megmaradnak.
+    </p>
+    <button type="button" onclick={updateApp} disabled={pwa.updating}
+      >Frissítés most</button
+    >
+  </div>
 {/if}
 
 <style>
@@ -103,6 +112,10 @@
     cursor: wait;
   }
   .update-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
     margin-bottom: 32px;
   }
   @media (max-width: 599px) {

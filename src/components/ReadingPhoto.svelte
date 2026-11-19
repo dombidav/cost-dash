@@ -224,7 +224,7 @@
   }
 </script>
 
-<div class="reading-photo">
+<div class="reading-photo" aria-busy={busy}>
   {#if preview}<button
       type="button"
       class="photo-thumb"

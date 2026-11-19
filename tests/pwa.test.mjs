@@ -10,7 +10,12 @@ const template = await readFile(
   "utf8",
 );
 
-function worker({ version = "new", fail = false, stores = new Map() } = {}) {
+function worker({
+  version = "new",
+  fail = false,
+  stores = new Map(),
+  windows,
+} = {}) {
   const scope = "https://example.com/cost-dash/";
   const prefix = `rezsipont:${scope}:`;
   const listeners = new Map();
@@ -56,6 +61,8 @@ function worker({ version = "new", fail = false, stores = new Map() } = {}) {
       self: {
         registration: { scope },
         clients: {
+          matchAll: async () =>
+            windows ?? [{ id: "app", url: scope + "dashboard.html" }],
           claim: async () => {
             claimed = true;
           },
@@ -71,9 +78,10 @@ function worker({ version = "new", fail = false, stores = new Map() } = {}) {
       Response,
     },
   );
-  async function dispatch(name) {
+  async function dispatch(name, detail = {}) {
     let pending;
     listeners.get(name)({
+      ...detail,
       waitUntil: (promise) => {
         pending = promise;
       },
@@ -129,6 +137,50 @@ test("complete offline cache serves unvisited chunks, fonts, root and query URLs
   );
   assert.equal(await sw.fetchResource("../dashboard.html"), undefined);
   assert.equal(await sw.fetchResource("dashboard.html", "POST"), undefined);
+});
+
+test("a complete update can activate in one app window without touching unrelated apps", async () => {
+  const scope = "https://example.com/cost-dash/";
+  const sw = worker({
+    windows: [
+      { id: "app", url: scope + "dashboard.html" },
+      { id: "other", url: "https://example.com/other-app/" },
+    ],
+  });
+  await sw.dispatch("install");
+  assert.equal(sw.skipWaiting, false);
+  await sw.dispatch("message", {
+    data: { type: "ACTIVATE_UPDATE" },
+    source: { id: "app" },
+  });
+  assert.equal(sw.skipWaiting, true);
+});
+
+test("updates defer activation while another app window may have edits or old lazy chunks", async () => {
+  const scope = "https://example.com/cost-dash/";
+  const windows = [
+    { id: "app", url: scope },
+    { id: "second", url: scope + "viz.html" },
+  ];
+  const sw = worker({ windows });
+  const messages = [];
+  const source = {
+    id: "app",
+    postMessage: (message) => messages.push(message.type),
+  };
+  await sw.dispatch("install");
+  await sw.dispatch("message", { data: { type: "ACTIVATE_UPDATE" }, source });
+  assert.equal(sw.skipWaiting, false);
+  assert.deepEqual(messages, ["UPDATE_DEFERRED"]);
+  windows.pop();
+  await sw.dispatch("message", { data: { type: "ACTIVATE_UPDATE" }, source });
+  assert.equal(sw.skipWaiting, true);
+  const foreign = worker();
+  await foreign.dispatch("message", {
+    data: { type: "ACTIVATE_UPDATE" },
+    source: { id: "foreign", postMessage: () => {} },
+  });
+  assert.equal(foreign.skipWaiting, false);
 });
 
 test("failed offline download preserves the old cache and never activates a partial app", async () => {

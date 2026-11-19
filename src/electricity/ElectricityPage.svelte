@@ -688,7 +688,7 @@
         <h2>Új villanyóraállás</h2>
         <span class="icon-circle" aria-hidden="true">＋</span>
       </div>
-      <form onsubmit={addReading}>
+      <form onsubmit={addReading} aria-busy={saving}>
         <div class="field-label">
           <label for="electricity-reading-peak"
             >{point.tariff === "A2"

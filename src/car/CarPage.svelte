@@ -388,7 +388,7 @@
       A fizetett összeg önmagában is menthető. A fogyasztáshoz add meg a megtett
       utat és a tankolt mennyiséget is.
     </p>
-    <form onsubmit={save}>
+    <form onsubmit={save} aria-busy={saving}>
       <div class="expense-fields">
         <div class="field">
           <div class="field-label">

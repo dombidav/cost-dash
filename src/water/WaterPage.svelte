@@ -182,7 +182,7 @@
     <p class="expense-subtitle">
       Két leolvasásból megmutatjuk, hány köbméter vizet használtál közöttük.
     </p>
-    <form onsubmit={record}>
+    <form onsubmit={record} aria-busy={saving}>
       <div class="expense-fields">
         <EntryInput
           id="water-date"

@@ -1,4 +1,6 @@
 import { excludedPlatform } from "./pwa-platform";
+import { monitorPwaUpdates } from "./pwa-updates";
+import { ui } from "./ui.svelte";
 
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
@@ -12,10 +14,17 @@ export const pwa = $state({
   canInstall: false,
   installing: false,
   updateAvailable: false,
+  updating: false,
+  updateBlocked: false,
   error: "",
 });
 
 let prompt: InstallPrompt | null = null;
+let updates: ReturnType<typeof monitorPwaUpdates> | undefined;
+
+export function updateApp() {
+  updates?.apply();
+}
 
 function requestPersistence() {
   // Best effort: an unavailable/denied persistence grant must not stop the app.
@@ -81,34 +90,68 @@ export function initPwa() {
   navigator.serviceWorker.addEventListener("controllerchange", checkController);
   checkController();
 
-  void navigator.serviceWorker
-    .register(workerUrl, { scope: base.pathname, updateViaCache: "none" })
-    .then((registration) => {
-      const checkUpdate = () => {
-        pwa.updateAvailable = !!registration.waiting;
-        checkController();
-      };
-      const watchInstall = () => {
-        const worker = registration.installing;
-        worker?.addEventListener("statechange", () => {
-          checkUpdate();
-          if (worker.state === "redundant" && !pwa.offlineReady)
-            pwa.error =
-              "Az offline csomag letöltése nem sikerült. Csatlakozz az internethez, majd töltsd újra az oldalt.";
-        });
-      };
-      checkUpdate();
-      watchInstall();
-      registration.addEventListener("updatefound", watchInstall);
-      window.addEventListener("online", () => {
-        void registration.update().catch(() => {});
+  let registering = false;
+  let edited = false;
+  const recordEdit = () => {
+    edited = true;
+  };
+  document.addEventListener("input", recordEdit);
+  document.addEventListener("change", recordEdit);
+  const register = async () => {
+    if (registering || updates || navigator.onLine === false) return;
+    registering = true;
+    try {
+      const registration = await navigator.serviceWorker.register(workerUrl, {
+        scope: base.pathname,
+        updateViaCache: "none",
       });
-    })
-    .catch(() => {
-      if (!pwa.offlineReady)
-        pwa.error =
-          "Az offline csomag nem tölthető le. Csatlakozz az internethez, majd töltsd újra az oldalt.";
-    });
+      updates = monitorPwaUpdates(registration, {
+        edited,
+        available: (value) => {
+          pwa.updateAvailable = value;
+        },
+        applying: (value) => {
+          pwa.updating = value;
+        },
+        blocked: (value) => {
+          pwa.updateBlocked = value;
+        },
+        failed: () => {
+          if (!pwa.offlineReady)
+            pwa.error =
+              "Az offline csomag letöltése nem sikerült. Próbáld újra később.";
+        },
+        canApply: (manual) =>
+          document.hasFocus() &&
+          (manual || (!ui.storageError && !ui.undo)) &&
+          !document.activeElement?.matches(
+            "input, textarea, select, [contenteditable='true']",
+          ) &&
+          !document.querySelector('[aria-busy="true"], dialog[open]'),
+        reload: () => location.reload(),
+      });
+      document.removeEventListener("input", recordEdit);
+      document.removeEventListener("change", recordEdit);
+      clearInterval(registrationRetry);
+    } catch {
+      // Registration/update failures are retried; offline use is not an error.
+    } finally {
+      registering = false;
+    }
+  };
+  window.addEventListener("online", () => {
+    void register();
+  });
+  window.addEventListener("focus", () => {
+    void register();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void register();
+  });
+  const registrationRetry = setInterval(() => {
+    if (document.visibilityState === "visible") void register();
+  }, 5 * 60_000);
+  void register();
 }
 
 export async function installApp() {
